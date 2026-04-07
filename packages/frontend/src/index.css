@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-terra-bg: #040a16;
+  --color-terra-surface: #0a1628;
+  --color-terra-border: #1a2a44;
+  --color-terra-text: #c8d6e5;
+  --color-terra-text-muted: #637777;
+  --color-terra-cyan: #4ecdc4;
+  --color-terra-amber: #ffcb6b;
+}
