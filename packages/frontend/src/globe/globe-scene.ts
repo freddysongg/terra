@@ -11,6 +11,8 @@ import { MarkerManager } from "./marker-manager.js";
 import { EnhancementRenderer } from "./enhancement-renderer.js";
 import { AlertPolygonRenderer } from "./alert-polygon-renderer.js";
 import { createAurora } from "./aurora.js";
+import { StormTrackRenderer } from "./storm-tracks.js";
+import { ImageryOverlay } from "./imagery-overlay.js";
 import { useEventStore } from "../stores/event-store.js";
 import { useGlobeStore } from "../stores/globe-store.js";
 import globeSurfaceVert from "./shaders/globe-surface.vert";
@@ -19,6 +21,10 @@ import globeSurfaceFrag from "./shaders/globe-surface.frag";
 const BACKGROUND_COLOR = 0x040a16;
 const AUTO_ROTATE_SPEED = 0.25;
 const GLOBE_TILT_DEG = 12;
+
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
 
 interface GlobeSceneConfig {
   canvas: HTMLCanvasElement;
@@ -36,10 +42,19 @@ export class GlobeScene {
   private markerManager: MarkerManager | null = null;
   private enhancementRenderer: EnhancementRenderer | null = null;
   private alertPolygonRenderer: AlertPolygonRenderer | null = null;
+  private stormTrackRenderer: StormTrackRenderer | null = null;
+  private imageryOverlay: ImageryOverlay | null = null;
   private aurora: ReturnType<typeof createAurora> | null = null;
   private raycaster = new THREE.Raycaster();
   private cursorNdc = new THREE.Vector2();
   private isCursorOverCanvas = false;
+
+  private flyToProgress: number | null = null;
+  private flyToStart = new THREE.Vector3();
+  private flyToEnd = new THREE.Vector3();
+  private unsubFlyTo: (() => void) | null = null;
+  private unsubPerformanceMode: (() => void) | null = null;
+  private isPerformanceMode = false;
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -83,6 +98,17 @@ export class GlobeScene {
 
     canvas.addEventListener("mousemove", this.handleMouseMove);
     canvas.addEventListener("mouseleave", this.handleMouseLeave);
+
+    this.unsubFlyTo = useGlobeStore.subscribe((state) => state.flyToTarget, (target) => {
+      if (!target) return;
+      this.startFlyTo(target.lat, target.lng);
+      useGlobeStore.getState().setFlyToTarget(null);
+    });
+
+    this.unsubPerformanceMode = useGlobeStore.subscribe(
+      (state) => state.isPerformanceMode,
+      (isOn) => this.applyPerformanceMode(isOn),
+    );
 
     this.init().catch((err) => {
       console.error("globe scene initialization failed:", err);
@@ -164,6 +190,8 @@ export class GlobeScene {
 
     this.enhancementRenderer = new EnhancementRenderer(this.scene, this.globe);
     this.alertPolygonRenderer = new AlertPolygonRenderer(this.scene, this.globe);
+    this.stormTrackRenderer = new StormTrackRenderer(this.scene, this.globe);
+    this.imageryOverlay = new ImageryOverlay(this.globe);
 
     onProgress?.(100);
     onReady?.();
@@ -179,14 +207,59 @@ export class GlobeScene {
     return new THREE.CanvasTexture(canvas);
   }
 
+  private latLngToTarget(lat: number, lng: number): THREE.Vector3 {
+    const latRad = (lat * Math.PI) / 180;
+    const lngRad = (lng * Math.PI) / 180;
+    return new THREE.Vector3(
+      -Math.cos(latRad) * Math.cos(lngRad),
+      Math.sin(latRad),
+      Math.cos(latRad) * Math.sin(lngRad),
+    ).multiplyScalar(0.01);
+  }
+
+  private startFlyTo(lat: number, lng: number): void {
+    this.flyToStart.copy(this.controls.target);
+    this.flyToEnd.copy(this.latLngToTarget(lat, lng));
+    this.flyToProgress = 0;
+    this.controls.autoRotate = false;
+  }
+
+  private updateFlyTo(deltaTime: number): void {
+    if (this.flyToProgress === null) return;
+
+    const FLY_TO_DURATION = 1.0;
+    this.flyToProgress = Math.min(this.flyToProgress + deltaTime / FLY_TO_DURATION, 1.0);
+    const t = easeInOutCubic(this.flyToProgress);
+    this.controls.target.lerpVectors(this.flyToStart, this.flyToEnd, t);
+
+    if (this.flyToProgress >= 1.0) {
+      this.flyToProgress = null;
+    }
+  }
+
+  private applyPerformanceMode(isOn: boolean): void {
+    this.isPerformanceMode = isOn;
+
+    if (this.contourMesh) {
+      this.contourMesh.visible = !isOn;
+    }
+  }
+
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
+    const deltaTime = this.clock.getDelta();
     this.controls.update();
-    this.aurora?.update(this.clock.getElapsedTime());
+    this.aurora?.update(this.clock.elapsedTime);
+    this.updateFlyTo(deltaTime);
     this.updateCursorCoordinates();
 
     if (this.postProcessing && this.atmosphere) {
-      this.postProcessing.composer.render();
+      if (this.isPerformanceMode) {
+        /* Bypass the entire post-processing pipeline to save GPU work */
+        this.renderer.render(this.scene, this.camera);
+      } else {
+        this.postProcessing.composer.render();
+      }
       this.renderer.autoClear = false;
       this.renderer.render(this.atmosphere.scene, this.camera);
       this.renderer.autoClear = true;
@@ -194,6 +267,8 @@ export class GlobeScene {
     this.markerManager?.update();
     this.enhancementRenderer?.update();
     this.alertPolygonRenderer?.update();
+    this.stormTrackRenderer?.update();
+    this.imageryOverlay?.update();
   };
 
   private updateCursorCoordinates(): void {
@@ -251,11 +326,15 @@ export class GlobeScene {
     }
     this.config.canvas.removeEventListener("mousemove", this.handleMouseMove);
     this.config.canvas.removeEventListener("mouseleave", this.handleMouseLeave);
+    this.unsubFlyTo?.();
+    this.unsubPerformanceMode?.();
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.markerManager?.dispose();
     this.enhancementRenderer?.dispose();
     this.alertPolygonRenderer?.dispose();
+    this.stormTrackRenderer?.dispose();
+    this.imageryOverlay?.dispose();
 
     this.starField?.geometry.dispose();
     (this.starField?.material as THREE.PointsMaterial | undefined)?.dispose();

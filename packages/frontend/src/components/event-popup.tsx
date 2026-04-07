@@ -1,10 +1,44 @@
 import { useEventStore } from "../stores/event-store.js";
+import { useDataStore } from "../stores/data-store.js";
 import { CATEGORY_META } from "@terra/shared";
-import type { NaturalEvent } from "@terra/shared";
-import { X } from "lucide-react";
+import type { NaturalEvent, EventCategoryId } from "@terra/shared";
+import { X, Satellite } from "lucide-react";
 import { Button } from "./ui/button.js";
 import { Badge } from "./ui/badge.js";
 import { CategoryIcon } from "./category-icon.js";
+import { useGibsImagery } from "../hooks/use-gibs-imagery.js";
+
+const DEFAULT_GIBS_LAYER = "MODIS_Terra_CorrectedReflectance_TrueColor";
+
+const CATEGORY_GIBS_LAYER: Partial<Record<EventCategoryId, string>> = {
+  wildfires: "MODIS_Terra_CorrectedReflectance_TrueColor",
+  volcanoes: "MODIS_Terra_CorrectedReflectance_TrueColor",
+  severeStorms: "VIIRS_SNPP_CorrectedReflectance_TrueColor",
+  floods: "MODIS_Aqua_CorrectedReflectance_TrueColor",
+  landslides: "MODIS_Terra_CorrectedReflectance_TrueColor",
+  snow: "VIIRS_SNPP_CorrectedReflectance_TrueColor",
+  seaLakeIce: "MODIS_Terra_CorrectedReflectance_TrueColor",
+  dustHaze: "MODIS_Terra_CorrectedReflectance_TrueColor",
+};
+
+const GIBS_ZOOM = 3;
+
+interface TileCoords {
+  x: number;
+  y: number;
+}
+
+function latLngToTileCoords(lat: number, lng: number, zoom: number): TileCoords {
+  const n = Math.pow(2, zoom);
+  /* EPSG:4326 has 2*2^z columns (360° longitude) but only 2^z rows (180° latitude) */
+  const x = Math.floor(((lng + 180) / 360) * n * 2);
+  const y = Math.floor(((90 - lat) / 180) * n);
+  return { x, y };
+}
+
+function gibsLayerForCategory(category: EventCategoryId): string {
+  return CATEGORY_GIBS_LAYER[category] ?? DEFAULT_GIBS_LAYER;
+}
 
 type PopupPlacement = "above" | "below" | "left" | "right";
 
@@ -123,6 +157,9 @@ export function EventPopup(): React.ReactElement | null {
   const screenPosition = useEventStore((s) => s.selectedEventScreenPosition);
   const events = useEventStore((s) => s.events);
   const clearSelection = useEventStore((s) => s.clearSelection);
+  const activeImageryUrl = useDataStore((s) => s.activeImageryUrl);
+  const clearImagery = useDataStore((s) => s.clearImagery);
+  const { fetchImagery } = useGibsImagery();
 
   if (!selectedEventId || !screenPosition) return null;
 
@@ -200,12 +237,32 @@ export function EventPopup(): React.ReactElement | null {
           </a>
         )}
 
-        <button
-          disabled
-          className="mt-1 block text-[10px] text-terra-text-muted cursor-not-allowed"
-        >
-          View satellite imagery (coming soon)
-        </button>
+        {activeImageryUrl ? (
+          <button
+            className="mt-1 flex items-center gap-1 text-[10px] text-terra-cyan hover:underline"
+            onClick={clearImagery}
+          >
+            <X className="h-2.5 w-2.5" />
+            Close satellite imagery
+          </button>
+        ) : (
+          <button
+            className="mt-1 flex items-center gap-1 text-[10px] text-terra-cyan hover:underline"
+            onClick={() => {
+              if (!lastGeometry) return;
+              const [longitude, latitude] = lastGeometry.coordinates;
+              const layer = gibsLayerForCategory(selectedEvent.category);
+              const date = lastGeometry.timestamp.slice(0, 10);
+              const { x, y } = latLngToTileCoords(latitude, longitude, GIBS_ZOOM);
+
+              useDataStore.getState().setImageryEventCoordinates({ lat: latitude, lng: longitude });
+              fetchImagery(layer, date, GIBS_ZOOM, y, x);
+            }}
+          >
+            <Satellite className="h-2.5 w-2.5" />
+            View satellite imagery
+          </button>
+        )}
       </div>
     </div>
   );

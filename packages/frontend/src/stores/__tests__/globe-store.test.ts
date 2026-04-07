@@ -57,4 +57,19 @@ describe("globe-store", () => {
     useGlobeStore.getState().setCursorCoordinates(null);
     expect(useGlobeStore.getState().cursorCoordinates).toBeNull();
   });
+
+  it("starts with null flyToTarget", () => {
+    expect(useGlobeStore.getState().flyToTarget).toBeNull();
+  });
+
+  it("sets flyToTarget", () => {
+    useGlobeStore.getState().setFlyToTarget({ lat: 50, lng: 15 });
+    expect(useGlobeStore.getState().flyToTarget).toEqual({ lat: 50, lng: 15 });
+  });
+
+  it("clears flyToTarget", () => {
+    useGlobeStore.getState().setFlyToTarget({ lat: 50, lng: 15 });
+    useGlobeStore.getState().setFlyToTarget(null);
+    expect(useGlobeStore.getState().flyToTarget).toBeNull();
+  });
 });
