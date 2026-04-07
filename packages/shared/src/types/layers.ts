@@ -4,12 +4,14 @@ export type EnhancementLayerId = "fireDensity" | "seismicDensity" | "weatherAler
 
 export type SpaceWeatherLayerId = "spaceWeather";
 
-export type LayerId = EventCategoryId | EnhancementLayerId | SpaceWeatherLayerId;
+export type ImageryLayerId = "satelliteImagery";
+
+export type LayerId = EventCategoryId | EnhancementLayerId | SpaceWeatherLayerId | ImageryLayerId;
 
 interface LayerMetadata {
   id: LayerId;
   label: string;
-  group: "category" | "enhancement" | "spaceWeather";
+  group: "category" | "enhancement" | "spaceWeather" | "imagery";
 }
 
 export type { LayerMetadata };

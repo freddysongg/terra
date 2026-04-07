@@ -1,4 +1,4 @@
-import { Search, Settings, Sun } from "lucide-react";
+import { Search, Settings } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { CATEGORY_META } from "@terra/shared";
 import type { NaturalEvent } from "@terra/shared";
@@ -52,7 +52,7 @@ export function TopBar(): React.ReactElement {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-20">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-20 w-[40vw] min-w-[300px] max-w-[600px]">
         <div className="flex items-center gap-2 rounded-full border border-terra-border bg-terra-surface/80 backdrop-blur-md px-3 py-1.5 shadow-lg">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-terra-text-muted" />
@@ -109,11 +109,11 @@ export function TopBar(): React.ReactElement {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center px-1">
-                <Sun className="h-3.5 w-3.5 text-terra-text-muted/40" />
+                <div className="h-2 w-2 rounded-full bg-gray-500" />
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Solar activity (coming soon)</p>
+              <p>No data</p>
             </TooltipContent>
           </Tooltip>
 

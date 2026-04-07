@@ -18,4 +18,5 @@ export const LAYER_REGISTRY: Record<LayerId, LayerMetadata> = {
   seismicDensity: { id: "seismicDensity", label: "Seismic Density (USGS)", group: "enhancement" },
   weatherAlerts: { id: "weatherAlerts", label: "Weather Alerts (NWS)", group: "enhancement" },
   spaceWeather: { id: "spaceWeather", label: "Space Weather", group: "spaceWeather" },
+  satelliteImagery: { id: "satelliteImagery", label: "Satellite Imagery", group: "imagery" },
 };

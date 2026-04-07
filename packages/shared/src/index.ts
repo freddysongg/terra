@@ -5,7 +5,7 @@ export type {
   ApiSource, ApiErrorCode, ApiSuccessResponse, ApiErrorResponse, ApiResponse,
 } from "./types/api.js";
 export type {
-  LayerId, EnhancementLayerId, SpaceWeatherLayerId, LayerMetadata,
+  LayerId, EnhancementLayerId, SpaceWeatherLayerId, ImageryLayerId, LayerMetadata,
 } from "./types/layers.js";
 export type { FireHotspot } from "./types/fires.js";
 export type { Earthquake } from "./types/earthquakes.js";

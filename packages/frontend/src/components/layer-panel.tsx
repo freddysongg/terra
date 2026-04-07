@@ -78,10 +78,12 @@ function getLayersByGroup(): {
   categoryLayers: LayerMetadata[];
   enhancementLayers: LayerMetadata[];
   spaceWeatherLayers: LayerMetadata[];
+  imageryLayers: LayerMetadata[];
 } {
   const categoryLayers: LayerMetadata[] = [];
   const enhancementLayers: LayerMetadata[] = [];
   const spaceWeatherLayers: LayerMetadata[] = [];
+  const imageryLayers: LayerMetadata[] = [];
 
   for (const layer of Object.values(LAYER_REGISTRY)) {
     switch (layer.group) {
@@ -94,10 +96,13 @@ function getLayersByGroup(): {
       case "spaceWeather":
         spaceWeatherLayers.push(layer);
         break;
+      case "imagery":
+        imageryLayers.push(layer);
+        break;
     }
   }
 
-  return { categoryLayers, enhancementLayers, spaceWeatherLayers };
+  return { categoryLayers, enhancementLayers, spaceWeatherLayers, imageryLayers };
 }
 
 export function LayerPanel(): React.ReactElement {
@@ -110,7 +115,7 @@ export function LayerPanel(): React.ReactElement {
     eventCountsByCategory.set(event.category, current + 1);
   }
 
-  const { categoryLayers, enhancementLayers, spaceWeatherLayers } = getLayersByGroup();
+  const { categoryLayers, enhancementLayers, spaceWeatherLayers, imageryLayers } = getLayersByGroup();
 
   return (
     <div
@@ -162,6 +167,11 @@ export function LayerPanel(): React.ReactElement {
               <LayerGroup
                 title="Space Weather"
                 layers={spaceWeatherLayers}
+                eventCountsByCategory={eventCountsByCategory}
+              />
+              <LayerGroup
+                title="Imagery"
+                layers={imageryLayers}
                 eventCountsByCategory={eventCountsByCategory}
               />
             </div>
