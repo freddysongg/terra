@@ -12,7 +12,6 @@ import globeSurfaceFrag from "./shaders/globe-surface.frag";
 
 const BACKGROUND_COLOR = 0x040a16;
 const AUTO_ROTATE_SPEED = 0.25;
-const AUTO_ROTATE_RESUME_DELAY = 3000;
 const GLOBE_TILT_DEG = 12;
 
 interface GlobeSceneConfig {
@@ -28,7 +27,6 @@ export class GlobeScene {
   private controls: OrbitControls;
   private animationFrameId: number | null = null;
   private resizeObserver: ResizeObserver;
-  private autoRotateTimer: ReturnType<typeof setTimeout> | null = null;
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -86,13 +84,6 @@ export class GlobeScene {
 
     controls.addEventListener("start", () => {
       controls.autoRotate = false;
-      if (this.autoRotateTimer) clearTimeout(this.autoRotateTimer);
-    });
-
-    controls.addEventListener("end", () => {
-      this.autoRotateTimer = setTimeout(() => {
-        controls.autoRotate = true;
-      }, AUTO_ROTATE_RESUME_DELAY);
     });
 
     return controls;
@@ -185,7 +176,6 @@ export class GlobeScene {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
     }
-    if (this.autoRotateTimer) clearTimeout(this.autoRotateTimer);
     this.resizeObserver.disconnect();
     this.controls.dispose();
 
