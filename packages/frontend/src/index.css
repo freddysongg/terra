@@ -8,4 +8,39 @@
   --color-terra-text-muted: #637777;
   --color-terra-cyan: #4ecdc4;
   --color-terra-amber: #ffcb6b;
+
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+@layer base {
+  :root {
+    --background: 222 50% 4%;
+    --foreground: 210 25% 84%;
+    --card: 217 43% 10%;
+    --card-foreground: 210 25% 84%;
+    --popover: 217 43% 10%;
+    --popover-foreground: 210 25% 84%;
+    --primary: 174 56% 55%;
+    --primary-foreground: 222 50% 4%;
+    --secondary: 217 43% 14%;
+    --secondary-foreground: 210 25% 84%;
+    --muted: 217 43% 14%;
+    --muted-foreground: 180 10% 43%;
+    --accent: 217 43% 14%;
+    --accent-foreground: 210 25% 84%;
+    --destructive: 0 62% 52%;
+    --destructive-foreground: 210 25% 84%;
+    --border: 215 40% 18%;
+    --input: 215 40% 18%;
+    --ring: 174 56% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-[hsl(var(--border))];
+  }
 }
