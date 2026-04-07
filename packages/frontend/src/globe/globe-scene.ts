@@ -7,6 +7,8 @@ import { createOceanColorMap } from "./textures/ocean-color.js";
 import { createContourTexture } from "./textures/contour-lines.js";
 import { createFallbackNightTexture } from "./textures/fallback-night.js";
 import { loadGlobeTextures, applyTextureSettings } from "./textures/texture-loader.js";
+import { MarkerManager } from "./marker-manager.js";
+import { useEventStore } from "../stores/event-store.js";
 import globeSurfaceVert from "./shaders/globe-surface.vert";
 import globeSurfaceFrag from "./shaders/globe-surface.frag";
 
@@ -27,6 +29,7 @@ export class GlobeScene {
   private controls: OrbitControls;
   private animationFrameId: number | null = null;
   private resizeObserver: ResizeObserver;
+  private markerManager: MarkerManager | null = null;
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -84,6 +87,7 @@ export class GlobeScene {
 
     controls.addEventListener("start", () => {
       controls.autoRotate = false;
+      useEventStore.getState().clearSelection();
     });
 
     return controls;
@@ -134,6 +138,13 @@ export class GlobeScene {
     this.atmosphere = createAtmosphere(this.camera);
     this.postProcessing = createPostProcessing(this.renderer, this.scene, this.camera);
 
+    this.markerManager = new MarkerManager(
+      this.scene,
+      this.camera,
+      this.config.canvas,
+      this.globe,
+    );
+
     onProgress?.(100);
     onReady?.();
 
@@ -158,6 +169,8 @@ export class GlobeScene {
       this.renderer.render(this.atmosphere.scene, this.camera);
       this.renderer.autoClear = true;
     }
+
+    this.markerManager?.update();
   };
 
   private handleResize = (): void => {
@@ -170,6 +183,7 @@ export class GlobeScene {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
     this.postProcessing?.resize(width, height);
+    this.markerManager?.resize(width, height);
   };
 
   dispose(): void {
@@ -178,6 +192,7 @@ export class GlobeScene {
     }
     this.resizeObserver.disconnect();
     this.controls.dispose();
+    this.markerManager?.dispose();
 
     this.starField?.geometry.dispose();
     (this.starField?.material as THREE.PointsMaterial | undefined)?.dispose();
