@@ -80,7 +80,7 @@ export class GlobeScene {
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.minDistance = 1.8;
-    controls.maxDistance = 6.0;
+    controls.maxDistance = 3.5;
     controls.enablePan = false;
     controls.autoRotate = true;
     controls.autoRotateSpeed = AUTO_ROTATE_SPEED;
