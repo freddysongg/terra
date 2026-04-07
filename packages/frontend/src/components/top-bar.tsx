@@ -1,4 +1,4 @@
-import { Search, Settings } from "lucide-react";
+import { Search, Settings, Globe } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { CATEGORY_META } from "@terra/shared";
 import type { NaturalEvent, SpaceWeatherSummary } from "@terra/shared";
@@ -6,6 +6,8 @@ import { resolveLatestFlare, resolveFlarePrefix } from "./space-weather-card.js"
 import { useEventStore } from "../stores/event-store.js";
 import { useGlobeStore } from "../stores/globe-store.js";
 import { useDataStore } from "../stores/data-store.js";
+import { REGIONS } from "../constants/regions.js";
+import type { Region } from "../constants/regions.js";
 import { Input } from "./ui/input.js";
 import { Button } from "./ui/button.js";
 import { ScrollArea } from "./ui/scroll-area.js";
@@ -72,14 +74,36 @@ export function TopBar(): React.ReactElement {
     }).slice(0, MAX_DROPDOWN_RESULTS);
   }, [events, searchQuery]);
 
-  const handleDropdownSelect = useCallback((id: string): void => {
-    selectEvent(id);
+  const matchingRegions: readonly Region[] = useMemo(() => {
+    const trimmed = searchQuery.trim().toLowerCase();
+    if (!trimmed) return [];
+    return REGIONS.filter((region) => region.name.toLowerCase().includes(trimmed));
+  }, [searchQuery]);
+
+  const hasDropdownResults = matchingEvents.length > 0 || matchingRegions.length > 0;
+
+  const handleDropdownSelect = useCallback((eventId: string): void => {
+    const selectedEvent = useEventStore.getState().events.find((e) => e.id === eventId);
+    selectEvent(eventId);
     setSelectedScreenPosition({
       x: window.innerWidth / 2,
       y: window.innerHeight / 3,
     });
     setSearchQuery("");
+
+    if (selectedEvent) {
+      const lastGeometry = selectedEvent.geometries[selectedEvent.geometries.length - 1];
+      if (lastGeometry) {
+        const [longitude, latitude] = lastGeometry.coordinates;
+        useGlobeStore.getState().setFlyToTarget({ lat: latitude, lng: longitude });
+      }
+    }
   }, [selectEvent, setSelectedScreenPosition, setSearchQuery]);
+
+  const handleRegionSelect = useCallback((region: Region): void => {
+    useGlobeStore.getState().setFlyToTarget({ lat: region.lat, lng: region.lng });
+    setSearchQuery("");
+  }, [setSearchQuery]);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -94,25 +118,51 @@ export function TopBar(): React.ReactElement {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-7 w-[180px] rounded-full border-none bg-transparent pl-8 pr-3 text-xs text-terra-text placeholder:text-terra-text-muted focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-            {searchQuery.trim() && matchingEvents.length > 0 && (
+            {searchQuery.trim() && hasDropdownResults && (
               <div className="absolute left-0 top-full mt-1 w-[260px] rounded-lg border border-terra-border bg-terra-surface/95 backdrop-blur-md shadow-xl overflow-hidden z-50">
                 <ScrollArea className="max-h-[240px]">
                   <div className="p-1">
-                    {matchingEvents.map((event) => (
-                      <button
-                        key={event.id}
-                        onClick={() => handleDropdownSelect(event.id)}
-                        className="flex items-center gap-2 w-full rounded-md px-2.5 py-1.5 text-left hover:bg-white/5 transition-colors"
-                      >
-                        <div
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: CATEGORY_META[event.category]?.color }}
-                        />
-                        <span className="text-xs text-terra-text truncate">
-                          {event.title}
-                        </span>
-                      </button>
-                    ))}
+                    {matchingRegions.length > 0 && (
+                      <>
+                        <div className="px-2.5 py-1 text-[10px] text-terra-text-muted uppercase tracking-wider">
+                          Regions
+                        </div>
+                        {matchingRegions.map((region) => (
+                          <button
+                            key={region.name}
+                            onClick={() => handleRegionSelect(region)}
+                            className="flex items-center gap-2 w-full rounded-md px-2.5 py-1.5 text-left hover:bg-white/5 transition-colors"
+                          >
+                            <Globe className="h-3 w-3 shrink-0 text-terra-text-muted" />
+                            <span className="text-xs text-terra-text truncate">
+                              {region.name}
+                            </span>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                    {matchingEvents.length > 0 && (
+                      <>
+                        <div className="px-2.5 py-1 text-[10px] text-terra-text-muted uppercase tracking-wider">
+                          Events
+                        </div>
+                        {matchingEvents.map((event) => (
+                          <button
+                            key={event.id}
+                            onClick={() => handleDropdownSelect(event.id)}
+                            className="flex items-center gap-2 w-full rounded-md px-2.5 py-1.5 text-left hover:bg-white/5 transition-colors"
+                          >
+                            <div
+                              className="h-2 w-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: CATEGORY_META[event.category]?.color }}
+                            />
+                            <span className="text-xs text-terra-text truncate">
+                              {event.title}
+                            </span>
+                          </button>
+                        ))}
+                      </>
+                    )}
                   </div>
                 </ScrollArea>
               </div>

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { ChevronLeft, Activity, Clock } from "lucide-react";
 import { useEventStore } from "../stores/event-store.js";
+import { useGlobeStore } from "../stores/globe-store.js";
 import { useLayerStore } from "../stores/layer-store.js";
 import { CATEGORY_META } from "@terra/shared";
 import type { NaturalEvent, EventCategoryId } from "@terra/shared";
@@ -117,7 +118,16 @@ export function EventFeed(): React.ReactElement {
   const handleFeedSelect = useCallback((eventId: string): void => {
     selectEvent(eventId);
     setSelectedScreenPosition({ x: window.innerWidth / 2, y: window.innerHeight / 3 });
-  }, [selectEvent, setSelectedScreenPosition]);
+
+    const targetEvent = events.find((e) => e.id === eventId);
+    if (targetEvent) {
+      const lastGeometry = targetEvent.geometries[targetEvent.geometries.length - 1];
+      if (lastGeometry) {
+        const [longitude, latitude] = lastGeometry.coordinates;
+        useGlobeStore.getState().setFlyToTarget({ lat: latitude, lng: longitude });
+      }
+    }
+  }, [selectEvent, setSelectedScreenPosition, events]);
 
   const filteredEvents = useMemo(() => {
     let result = events.filter((e) => activeLayers.has(e.category));
