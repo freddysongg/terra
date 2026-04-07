@@ -10,6 +10,29 @@ const BACK_FACE_THRESHOLD = 0;
 const MARKER_SIZE = 16;
 const DOT_SIZE = 16;
 const ICON_SIZE = 10;
+const LAYER_FADE_DURATION_MS = 300;
+const RING_COUNT = 3;
+const RING_STAGGER_DELAY_S = 0.5;
+
+let styleInjected = false;
+
+function injectMarkerStyles(): void {
+  if (styleInjected) return;
+  styleInjected = true;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes terra-pulse {
+      0% { transform: scale(1); opacity: 0.6; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+    @keyframes terra-ring {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(3); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 type MarkerIconName =
   | "sun-dim"
@@ -54,6 +77,7 @@ interface MarkerEntry {
   eventId: string;
   category: EventCategoryId;
   position: THREE.Vector3;
+  color: string;
 }
 
 function latLngToVector3(latitude: number, longitude: number): THREE.Vector3 {
@@ -79,7 +103,39 @@ function projectToScreen(
   };
 }
 
+function createPulseElement(color: string): HTMLDivElement {
+  const pulse = document.createElement("div");
+  pulse.style.cssText = `
+    width: ${DOT_SIZE}px;
+    height: ${DOT_SIZE}px;
+    border-radius: 50%;
+    background: ${color};
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    animation: terra-pulse 2.5s ease-out infinite;
+  `;
+  return pulse;
+}
+
+function createRingElement(color: string, delayS: number): HTMLDivElement {
+  const ring = document.createElement("div");
+  ring.style.cssText = `
+    width: ${DOT_SIZE}px;
+    height: ${DOT_SIZE}px;
+    border-radius: 50%;
+    border: 1px solid ${color};
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    animation: terra-ring 1.5s ease-out ${delayS}s infinite;
+  `;
+  return ring;
+}
+
 function createMarkerElement(event: NaturalEvent): HTMLDivElement {
+  injectMarkerStyles();
+
   const meta = CATEGORY_META[event.category];
   const color = meta?.color ?? "#ffffff";
   const iconName = meta?.icon ?? "activity";
@@ -93,6 +149,11 @@ function createMarkerElement(event: NaturalEvent): HTMLDivElement {
     height: ${MARKER_SIZE}px;
     position: relative;
   `;
+
+  if (event.status === "open") {
+    const pulse = createPulseElement(color);
+    container.appendChild(pulse);
+  }
 
   const dot = document.createElement("div");
   dot.style.cssText = `
@@ -139,7 +200,10 @@ export class MarkerManager {
   private markers: Map<string, MarkerEntry> = new Map();
   private unsubscribeEvents: () => void;
   private unsubscribeLayers: () => void;
+  private unsubscribeSelection: () => void;
   private markerClickedThisFrame = false;
+  private selectedEventId: string | null = null;
+  private fadingOutIds: Set<string> = new Set();
 
   constructor(
     private scene: THREE.Scene,
@@ -171,6 +235,14 @@ export class MarkerManager {
       },
     );
 
+    this.unsubscribeSelection = useEventStore.subscribe(
+      (state, prevState) => {
+        if (state.selectedEventId !== prevState.selectedEventId) {
+          this.updateSelectionRings(prevState.selectedEventId, state.selectedEventId);
+        }
+      },
+    );
+
     canvas.addEventListener("click", this.handleCanvasClick);
   }
 
@@ -178,6 +250,40 @@ export class MarkerManager {
     if (this.markerClickedThisFrame) return;
     useEventStore.getState().clearSelection();
   };
+
+  private removeRings(element: HTMLDivElement): void {
+    const rings = element.querySelectorAll(".terra-ring");
+    rings.forEach((ring) => ring.remove());
+  }
+
+  private addRings(element: HTMLDivElement, color: string): void {
+    for (let i = 0; i < RING_COUNT; i++) {
+      const ring = createRingElement(color, i * RING_STAGGER_DELAY_S);
+      ring.classList.add("terra-ring");
+      element.insertBefore(ring, element.firstChild);
+    }
+  }
+
+  private updateSelectionRings(
+    prevSelectedId: string | null,
+    nextSelectedId: string | null,
+  ): void {
+    if (prevSelectedId !== null) {
+      const prevEntry = this.markers.get(prevSelectedId);
+      if (prevEntry) {
+        this.removeRings(prevEntry.element);
+      }
+    }
+
+    this.selectedEventId = nextSelectedId;
+
+    if (nextSelectedId !== null) {
+      const nextEntry = this.markers.get(nextSelectedId);
+      if (nextEntry) {
+        this.addRings(nextEntry.element, nextEntry.color);
+      }
+    }
+  }
 
   private syncMarkers(): void {
     const events = useEventStore.getState().events;
@@ -212,13 +318,21 @@ export class MarkerManager {
 
       this.globe.add(cssObject);
 
+      const meta = CATEGORY_META[event.category];
+      const color = meta?.color ?? "#ffffff";
+
       this.markers.set(event.id, {
         object: cssObject,
         element,
         eventId: event.id,
         category: event.category,
         position,
+        color,
       });
+
+      if (this.selectedEventId === event.id) {
+        this.addRings(element, color);
+      }
     }
 
     this.updateVisibility();
@@ -244,7 +358,23 @@ export class MarkerManager {
 
     for (const [, entry] of this.markers) {
       const isLayerActive = activeLayers.has(entry.category);
-      entry.object.visible = isLayerActive;
+
+      if (isLayerActive && !entry.object.visible) {
+        entry.object.visible = true;
+        entry.element.style.transition = `opacity ${LAYER_FADE_DURATION_MS}ms ease`;
+        entry.element.style.opacity = "0";
+        requestAnimationFrame(() => {
+          entry.element.style.opacity = "1";
+        });
+      } else if (!isLayerActive && entry.object.visible) {
+        this.fadingOutIds.add(entry.eventId);
+        entry.element.style.transition = `opacity ${LAYER_FADE_DURATION_MS}ms ease`;
+        entry.element.style.opacity = "0";
+        setTimeout(() => {
+          entry.object.visible = false;
+          this.fadingOutIds.delete(entry.eventId);
+        }, LAYER_FADE_DURATION_MS);
+      }
     }
   }
 
@@ -259,8 +389,11 @@ export class MarkerManager {
       const markerNormal = worldPos.clone().normalize();
 
       const dotProduct = markerNormal.dot(cameraDirection);
-      entry.element.style.opacity = dotProduct < BACK_FACE_THRESHOLD ? "0" : "1";
-      entry.element.style.pointerEvents = dotProduct < BACK_FACE_THRESHOLD ? "none" : "auto";
+      const isBackFacing = dotProduct < BACK_FACE_THRESHOLD;
+      if (!this.fadingOutIds.has(entry.eventId)) {
+        entry.element.style.opacity = isBackFacing ? "0" : "1";
+      }
+      entry.element.style.pointerEvents = isBackFacing ? "none" : "auto";
     }
 
     this.css2dRenderer.render(this.scene, this.camera);
@@ -273,6 +406,7 @@ export class MarkerManager {
   dispose(): void {
     this.unsubscribeEvents();
     this.unsubscribeLayers();
+    this.unsubscribeSelection();
     this.canvas.removeEventListener("click", this.handleCanvasClick);
 
     for (const [, entry] of this.markers) {

@@ -70,4 +70,11 @@ describe("event-store", () => {
     useEventStore.getState().setSearchQuery("");
     expect(useEventStore.getState().searchQuery).toBe("");
   });
+
+  it("tracks last fetched timestamp", () => {
+    expect(useEventStore.getState().lastFetchedAt).toBeNull();
+    const before = Date.now();
+    useEventStore.getState().setLastFetchedAt(before);
+    expect(useEventStore.getState().lastFetchedAt).toBe(before);
+  });
 });

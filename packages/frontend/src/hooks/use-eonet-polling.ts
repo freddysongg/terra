@@ -49,7 +49,9 @@ export function useEonetPolling(): void {
       try {
         const events = await fetchWithRetry(abortController.signal);
         if (!abortController.signal.aborted) {
-          useEventStore.getState().setEvents(events);
+          const store = useEventStore.getState();
+          store.setEvents(events);
+          store.setLastFetchedAt(Date.now());
         }
       } catch (err) {
         if (!abortController.signal.aborted) {
