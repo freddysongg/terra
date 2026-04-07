@@ -59,4 +59,15 @@ describe("event-store", () => {
     useEventStore.getState().setHoveredEvent(null);
     expect(useEventStore.getState().hoveredEventId).toBeNull();
   });
+
+  it("starts with empty search query", () => {
+    expect(useEventStore.getState().searchQuery).toBe("");
+  });
+
+  it("sets search query", () => {
+    useEventStore.getState().setSearchQuery("wildfire");
+    expect(useEventStore.getState().searchQuery).toBe("wildfire");
+    useEventStore.getState().setSearchQuery("");
+    expect(useEventStore.getState().searchQuery).toBe("");
+  });
 });
