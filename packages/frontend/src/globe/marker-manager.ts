@@ -7,6 +7,46 @@ import type { NaturalEvent, EventCategoryId } from "@terra/shared";
 
 const MARKER_RADIUS = 1.01;
 const BACK_FACE_THRESHOLD = 0;
+const MARKER_SIZE = 16;
+const DOT_SIZE = 16;
+const ICON_SIZE = 10;
+
+type MarkerIconName =
+  | "sun-dim"
+  | "cloud"
+  | "activity"
+  | "droplets"
+  | "mountain"
+  | "alert-triangle"
+  | "snowflake"
+  | "zap"
+  | "cloud-snow"
+  | "thermometer"
+  | "flame"
+  | "waves"
+  | "flame-kindling";
+
+const ICON_SVG_PATHS: Record<MarkerIconName, string> = {
+  "sun-dim": '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+  "cloud": '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>',
+  "activity": '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  "droplets": '<path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/>',
+  "mountain": '<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>',
+  "alert-triangle": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  "snowflake": '<line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/>',
+  "zap": '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  "cloud-snow": '<path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="8" y1="20" x2="8.01" y2="20"/><line x1="12" y1="18" x2="12.01" y2="18"/><line x1="12" y1="22" x2="12.01" y2="22"/><line x1="16" y1="16" x2="16.01" y2="16"/><line x1="16" y1="20" x2="16.01" y2="20"/>',
+  "thermometer": '<path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>',
+  "flame": '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  "waves": '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>',
+  "flame-kindling": '<path d="M12 2c1 1.5 2 3 2 5s-1 3-2 4"/><path d="M8.5 2c1 1.5 1.5 3 1.5 5s-.5 3-1.5 4"/><path d="M15.5 2c1 1.5 1.5 3 1.5 5s-.5 3-1.5 4"/><path d="M12 22v-2"/><path d="M6 22v-2"/><path d="M18 22v-2"/><path d="M3 8h18"/><path d="M6 20H3v-2a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v2h-3"/>',
+};
+
+function buildIconSvg(iconName: string, color: string): string {
+  const paths = ICON_SVG_PATHS[iconName as MarkerIconName];
+  if (!paths) return "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${ICON_SIZE}" height="${ICON_SIZE}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+}
 
 interface MarkerEntry {
   object: CSS2DObject;
@@ -40,30 +80,46 @@ function projectToScreen(
 }
 
 function createMarkerElement(event: NaturalEvent): HTMLDivElement {
-  const color = CATEGORY_META[event.category]?.color ?? "#ffffff";
+  const meta = CATEGORY_META[event.category];
+  const color = meta?.color ?? "#ffffff";
+  const iconName = meta?.icon ?? "activity";
 
   const container = document.createElement("div");
   container.className = "terra-marker";
   container.style.cssText = `
     pointer-events: auto;
     cursor: pointer;
-    width: 12px;
-    height: 12px;
+    width: ${MARKER_SIZE}px;
+    height: ${MARKER_SIZE}px;
     position: relative;
   `;
 
   const dot = document.createElement("div");
   dot.style.cssText = `
-    width: 12px;
-    height: 12px;
+    width: ${DOT_SIZE}px;
+    height: ${DOT_SIZE}px;
     border-radius: 50%;
     background: ${color};
     border: 1.5px solid rgba(255, 255, 255, 0.6);
     box-shadow: 0 0 6px ${color}80;
     transition: transform 0.15s ease;
+    position: absolute;
+    inset: 0;
   `;
 
+  const iconWrapper = document.createElement("div");
+  iconWrapper.style.cssText = `
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  `;
+  iconWrapper.innerHTML = buildIconSvg(iconName, "rgba(255,255,255,0.9)");
+
   container.appendChild(dot);
+  container.appendChild(iconWrapper);
 
   container.addEventListener("mouseenter", () => {
     dot.style.transform = "scale(1.4)";

@@ -4,6 +4,7 @@ import type { NaturalEvent } from "@terra/shared";
 import { X } from "lucide-react";
 import { Button } from "./ui/button.js";
 import { Badge } from "./ui/badge.js";
+import { CategoryIcon } from "./category-icon.js";
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -60,9 +61,10 @@ export function EventPopup(): React.ReactElement | null {
         <div className="flex items-center gap-2 mb-2">
           <Badge
             variant="outline"
-            className="text-[10px] px-1.5 py-0"
+            className="text-[10px] px-1.5 py-0 flex items-center gap-1"
             style={{ borderColor: categoryMeta.color, color: categoryMeta.color }}
           >
+            <CategoryIcon iconName={categoryMeta.icon} className="h-2.5 w-2.5" />
             {categoryMeta.label}
           </Badge>
           <Badge

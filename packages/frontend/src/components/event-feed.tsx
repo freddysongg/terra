@@ -8,6 +8,7 @@ import { Button } from "./ui/button.js";
 import { ScrollArea } from "./ui/scroll-area.js";
 import { Badge } from "./ui/badge.js";
 import { cn } from "@/lib/utils.js";
+import { CategoryIcon } from "./category-icon.js";
 
 function formatRelativeTime(timestamp: string): string {
   const diffMs = Date.now() - new Date(timestamp).getTime();
@@ -71,9 +72,10 @@ function EventListItem({ event, isSelected, onSelect }: EventListItemProps): Rea
       )}
     >
       <div className="flex items-start gap-2">
-        <div
-          className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: categoryMeta.color }}
+        <CategoryIcon
+          iconName={categoryMeta.icon}
+          className="mt-1 h-3 w-3 shrink-0"
+          style={{ color: categoryMeta.color }}
         />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-terra-text truncate">
