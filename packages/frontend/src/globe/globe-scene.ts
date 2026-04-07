@@ -21,6 +21,10 @@ const BACKGROUND_COLOR = 0x040a16;
 const AUTO_ROTATE_SPEED = 0.25;
 const GLOBE_TILT_DEG = 12;
 
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 interface GlobeSceneConfig {
   canvas: HTMLCanvasElement;
   onProgress?: (progress: number) => void;
@@ -42,6 +46,11 @@ export class GlobeScene {
   private raycaster = new THREE.Raycaster();
   private cursorNdc = new THREE.Vector2();
   private isCursorOverCanvas = false;
+
+  private flyToProgress: number | null = null;
+  private flyToStart = new THREE.Vector3();
+  private flyToEnd = new THREE.Vector3();
+  private unsubFlyTo: (() => void) | null = null;
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -85,6 +94,12 @@ export class GlobeScene {
 
     canvas.addEventListener("mousemove", this.handleMouseMove);
     canvas.addEventListener("mouseleave", this.handleMouseLeave);
+
+    this.unsubFlyTo = useGlobeStore.subscribe((state) => state.flyToTarget, (target) => {
+      if (!target) return;
+      this.startFlyTo(target.lat, target.lng);
+      useGlobeStore.getState().setFlyToTarget(null);
+    });
 
     this.init().catch((err) => {
       console.error("globe scene initialization failed:", err);
@@ -182,10 +197,42 @@ export class GlobeScene {
     return new THREE.CanvasTexture(canvas);
   }
 
+  private latLngToTarget(lat: number, lng: number): THREE.Vector3 {
+    const latRad = (lat * Math.PI) / 180;
+    const lngRad = (lng * Math.PI) / 180;
+    return new THREE.Vector3(
+      -Math.cos(latRad) * Math.cos(lngRad),
+      Math.sin(latRad),
+      Math.cos(latRad) * Math.sin(lngRad),
+    ).multiplyScalar(0.01);
+  }
+
+  private startFlyTo(lat: number, lng: number): void {
+    this.flyToStart.copy(this.controls.target);
+    this.flyToEnd.copy(this.latLngToTarget(lat, lng));
+    this.flyToProgress = 0;
+    this.controls.autoRotate = false;
+  }
+
+  private updateFlyTo(deltaTime: number): void {
+    if (this.flyToProgress === null) return;
+
+    const FLY_TO_DURATION = 1.0;
+    this.flyToProgress = Math.min(this.flyToProgress + deltaTime / FLY_TO_DURATION, 1.0);
+    const t = easeInOutCubic(this.flyToProgress);
+    this.controls.target.lerpVectors(this.flyToStart, this.flyToEnd, t);
+
+    if (this.flyToProgress >= 1.0) {
+      this.flyToProgress = null;
+    }
+  }
+
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
+    const deltaTime = this.clock.getDelta();
     this.controls.update();
-    this.aurora?.update(this.clock.getElapsedTime());
+    this.aurora?.update(this.clock.elapsedTime);
+    this.updateFlyTo(deltaTime);
     this.updateCursorCoordinates();
 
     if (this.postProcessing && this.atmosphere) {
@@ -255,6 +302,7 @@ export class GlobeScene {
     }
     this.config.canvas.removeEventListener("mousemove", this.handleMouseMove);
     this.config.canvas.removeEventListener("mouseleave", this.handleMouseLeave);
+    this.unsubFlyTo?.();
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.markerManager?.dispose();
