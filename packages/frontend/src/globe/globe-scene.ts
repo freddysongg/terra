@@ -39,6 +39,7 @@ export class GlobeScene {
   private aurora: ReturnType<typeof createAurora> | null = null;
   private raycaster = new THREE.Raycaster();
   private cursorNdc = new THREE.Vector2();
+  private isCursorOverCanvas = false;
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -182,6 +183,7 @@ export class GlobeScene {
     this.animationFrameId = requestAnimationFrame(this.animate);
     this.controls.update();
     this.aurora?.update(this.clock.getElapsedTime());
+    this.updateCursorCoordinates();
 
     if (this.postProcessing && this.atmosphere) {
       this.postProcessing.composer.render();
@@ -194,12 +196,8 @@ export class GlobeScene {
     this.alertPolygonRenderer?.update();
   };
 
-  private handleMouseMove = (event: MouseEvent): void => {
-    const rect = this.config.canvas.getBoundingClientRect();
-    this.cursorNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.cursorNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    if (!this.globe) {
+  private updateCursorCoordinates(): void {
+    if (!this.globe || !this.isCursorOverCanvas) {
       useGlobeStore.getState().setCursorCoordinates(null);
       return;
     }
@@ -212,15 +210,22 @@ export class GlobeScene {
       return;
     }
 
-    const localPoint = this.globe.worldToLocal(intersections[0].point.clone()).normalize();
+    const localPoint = this.globe.worldToLocal(intersections[0]!.point.clone()).normalize();
     const lat = Math.asin(localPoint.y) * (180 / Math.PI);
     const lng = Math.atan2(localPoint.z, -localPoint.x) * (180 / Math.PI);
 
     useGlobeStore.getState().setCursorCoordinates({ lat, lng });
+  }
+
+  private handleMouseMove = (event: MouseEvent): void => {
+    const rect = this.config.canvas.getBoundingClientRect();
+    this.cursorNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.cursorNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.isCursorOverCanvas = true;
   };
 
   private handleMouseLeave = (): void => {
-    useGlobeStore.getState().setCursorCoordinates(null);
+    this.isCursorOverCanvas = false;
   };
 
   private handleResize = (): void => {

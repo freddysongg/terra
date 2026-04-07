@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-interface CursorCoordinates {
+export interface CursorCoordinates {
   lat: number;
   lng: number;
 }
