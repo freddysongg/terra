@@ -15,7 +15,10 @@ const ICON_SIZE = 10;
 const LAYER_FADE_DURATION_MS = 300;
 const RING_COUNT = 3;
 const RING_STAGGER_DELAY_S = 0.5;
-const CLUSTER_GRID_CELL_SIZE = 60;
+const CLUSTER_CELL_SIZE_AT_MAX_ZOOM = 20;
+const CLUSTER_CELL_SIZE_AT_MIN_ZOOM = 100;
+const CAMERA_MIN_DISTANCE = 1.8;
+const CAMERA_MAX_DISTANCE = 3.5;
 const CLUSTER_MIN_SIZE = 16;
 const CLUSTER_MAX_SIZE = 24;
 
@@ -88,6 +91,14 @@ interface MarkerEntry {
 interface ClusterBubbleEntry {
   element: HTMLDivElement;
   countLabel: HTMLSpanElement;
+}
+
+function computeGridCellSize(cameraDistance: number): number {
+  const normalized = Math.max(0, Math.min(1,
+    (cameraDistance - CAMERA_MIN_DISTANCE) / (CAMERA_MAX_DISTANCE - CAMERA_MIN_DISTANCE),
+  ));
+  return CLUSTER_CELL_SIZE_AT_MAX_ZOOM
+    + normalized * (CLUSTER_CELL_SIZE_AT_MIN_ZOOM - CLUSTER_CELL_SIZE_AT_MAX_ZOOM);
 }
 
 function clusterBubbleSize(memberCount: number): number {
@@ -460,7 +471,9 @@ export class MarkerManager {
       });
     }
 
-    const clusters = computeClusters(visibleInputs, CLUSTER_GRID_CELL_SIZE);
+    const cameraDistance = this.camera.position.length();
+    const gridCellSize = computeGridCellSize(cameraDistance);
+    const clusters = computeClusters(visibleInputs, gridCellSize);
 
     this.clusteredMarkerIds.clear();
     const multiMemberClusters: Cluster[] = [];
