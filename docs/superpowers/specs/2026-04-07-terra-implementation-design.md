@@ -146,7 +146,7 @@ registerXxxRoute(app: FastifyInstance): Promise<void>
 
 ### Special patterns
 
-**DONKI dual-fetch:** `DonkiClient.getData()` fetches both `/FLR` (solar flares) and `/GST` (geomagnetic storms) concurrently via `Promise.allSettled`. Results merged into a single `SpaceWeatherSummary`. Single cache key for the merged result. If one endpoint fails and the other succeeds, return partial data — the successful portion populates normally, the failed portion returns an empty array (`[]`). The `SpaceWeatherSummary` type uses non-nullable arrays (`readonly SolarFlare[]`, `readonly GeomagneticStorm[]`) so consumers always get arrays, never null — an empty array means "no data or fetch failed."
+**DONKI triple-fetch:** `DonkiClient.getData()` fetches `/FLR` (solar flares), `/GST` (geomagnetic storms), and `/CME` (coronal mass ejections) concurrently via `Promise.allSettled`. Results merged into a single `SpaceWeatherSummary`. Single cache key for the merged result. If any endpoint fails, return partial data — the successful portions populate normally, failed portions return empty arrays (`[]`). The `SpaceWeatherSummary` type uses non-nullable arrays (`readonly SolarFlare[]`, `readonly GeomagneticStorm[]`, `readonly CoronalMassEjection[]`) so consumers always get arrays, never null — an empty array means "no data or fetch failed." CME data is required for the SpaceWeatherCard to display Earth-directed CME arrival times (SW-13).
 
 **GIBS URL builder:** `GibsService` does not fetch upstream data. It constructs WMTS tile URLs from layer name + date + tile coordinates. The route accepts query params (layer, date, z, x, y) and returns the constructed URL. Cache is on the URL-to-tile mapping, not upstream data.
 
@@ -168,7 +168,7 @@ registerXxxRoute(app: FastifyInstance): Promise<void>
 | `useUsgsPolling` | `seismicDensity` layer on | 5 min | `data-store.earthquakes` | 3 retries w/ backoff → wait for next interval. Toast, revert toggle. |
 | `useFirmsPolling` | `fireDensity` layer on | 30 min | `data-store.fireHotspots` | 3 retries w/ backoff → wait for next interval. Toast, revert toggle. |
 | `useNwsPolling` | `weatherAlerts` layer on | 3 min | `data-store.nwsAlerts` | 3 retries w/ backoff → wait for next interval. Toast, revert toggle. |
-| `useDonkiPolling` | `spaceWeather` layer on | 20 min | `data-store.spaceWeather` | 3 retries w/ backoff → wait for next interval. Solar indicator → gray. |
+| `useDonkiPolling` | App mount (always active — solar indicator is always visible per SW-07) | 20 min | `data-store.spaceWeather` | 3 retries w/ backoff → wait for next interval. Solar indicator → gray. |
 | `useGibsImagery` | User clicks "View imagery" | On-demand (no interval) | `data-store.activeImageryUrl` | 3 retries w/ backoff. Toast "Imagery unavailable". |
 
 ### Frontend retry strategy
