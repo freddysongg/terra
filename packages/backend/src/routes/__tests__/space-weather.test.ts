@@ -44,7 +44,7 @@ describe("GET /api/space-weather", () => {
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(MOCK_CME_RESPONSE) }),
     );
 
-    app = Fastify();
+    app = Fastify({ logger: false });
     await registerSpaceWeatherRoute(app);
   });
 
@@ -76,7 +76,7 @@ describe("GET /api/space-weather — all endpoints fail, no cache", () => {
   beforeAll(async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network failure")));
 
-    app = Fastify();
+    app = Fastify({ logger: false });
     await registerSpaceWeatherRoute(app);
   });
 
@@ -109,7 +109,7 @@ describe("GET /api/space-weather — partial failure", () => {
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(MOCK_CME_RESPONSE) }),
     );
 
-    app = Fastify();
+    app = Fastify({ logger: false });
     await registerSpaceWeatherRoute(app);
   });
 

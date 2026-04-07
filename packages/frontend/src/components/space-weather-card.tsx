@@ -39,11 +39,15 @@ function formatRelativeTime(isoTime: string): string {
   return `${diffDays}d ago`;
 }
 
-function resolveLatestFlare(flares: readonly SolarFlare[]): SolarFlare | null {
+export function resolveLatestFlare(flares: readonly SolarFlare[]): SolarFlare | null {
   if (flares.length === 0) return null;
   return [...flares].sort(
     (a, b) => new Date(b.beginTime).getTime() - new Date(a.beginTime).getTime(),
   )[0]!;
+}
+
+export function resolveFlarePrefix(classType: string): string {
+  return classType[0]?.toUpperCase() ?? "";
 }
 
 function resolveCmeStatus(cmes: readonly CoronalMassEjection[]): string {

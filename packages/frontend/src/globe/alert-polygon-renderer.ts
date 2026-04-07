@@ -81,7 +81,7 @@ function buildFanMeshGeometry(points: THREE.Vector3[]): THREE.BufferGeometry {
   return geometry;
 }
 
-function buildPolygonEntry(alert: NwsAlert, scene: THREE.Scene): PolygonEntry | null {
+function buildPolygonEntry(alert: NwsAlert, parent: THREE.Object3D): PolygonEntry | null {
   if (alert.geometry === null) return null;
 
   const exteriorRing = alert.geometry.coordinates[0];
@@ -107,15 +107,15 @@ function buildPolygonEntry(alert: NwsAlert, scene: THREE.Scene): PolygonEntry | 
   const lineMaterial = new THREE.LineBasicMaterial({ color, linewidth: 1 });
   const line = new THREE.LineLoop(lineGeometry, lineMaterial);
 
-  scene.add(mesh);
-  scene.add(line);
+  parent.add(mesh);
+  parent.add(line);
 
   return { mesh, line, meshGeometry, lineGeometry, meshMaterial, lineMaterial };
 }
 
-function disposePolygonEntry(entry: PolygonEntry, scene: THREE.Scene): void {
-  scene.remove(entry.mesh);
-  scene.remove(entry.line);
+function disposePolygonEntry(entry: PolygonEntry, parent: THREE.Object3D): void {
+  parent.remove(entry.mesh);
+  parent.remove(entry.line);
   entry.meshGeometry.dispose();
   entry.lineGeometry.dispose();
   entry.meshMaterial.dispose();
@@ -123,14 +123,14 @@ function disposePolygonEntry(entry: PolygonEntry, scene: THREE.Scene): void {
 }
 
 export class AlertPolygonRenderer {
-  private scene: THREE.Scene;
+  private globe: THREE.Mesh;
   private polygons: Map<string, PolygonEntry> = new Map();
   private isLayerVisible = false;
   private unsubscribeData: () => void;
   private unsubscribeLayer: () => void;
 
-  constructor(scene: THREE.Scene, _globe: THREE.Mesh) {
-    this.scene = scene;
+  constructor(_scene: THREE.Scene, globe: THREE.Mesh) {
+    this.globe = globe;
 
     let prevWeatherAlerts = useDataStore.getState().weatherAlerts;
     let prevActiveLayers = useLayerStore.getState().activeLayers;
@@ -158,7 +158,7 @@ export class AlertPolygonRenderer {
 
     for (const [alertId, entry] of this.polygons) {
       if (!incomingIds.has(alertId)) {
-        disposePolygonEntry(entry, this.scene);
+        disposePolygonEntry(entry, this.globe);
         this.polygons.delete(alertId);
       }
     }
@@ -166,7 +166,7 @@ export class AlertPolygonRenderer {
     for (const alert of alerts) {
       if (this.polygons.has(alert.id)) continue;
 
-      const entry = buildPolygonEntry(alert, this.scene);
+      const entry = buildPolygonEntry(alert, this.globe);
       if (entry === null) continue;
 
       entry.mesh.visible = this.isLayerVisible;
@@ -194,7 +194,7 @@ export class AlertPolygonRenderer {
     this.unsubscribeLayer();
 
     for (const [, entry] of this.polygons) {
-      disposePolygonEntry(entry, this.scene);
+      disposePolygonEntry(entry, this.globe);
     }
     this.polygons.clear();
   }

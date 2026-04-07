@@ -1,10 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useDataStore } from "../stores/data-store.js";
 import type { ApiResponse } from "@terra/shared";
-
-interface GibsImageryHook {
-  fetchImagery: (layer: string, date: string, z: number, y: number, x: number) => Promise<void>;
-  activeImageryUrl: string | null;
-}
 
 async function fetchImageryUrl(
   layer: string,
@@ -28,21 +24,38 @@ async function fetchImageryUrl(
   return body.data;
 }
 
+interface GibsImageryHook {
+  fetchImagery: (layer: string, date: string, z: number, y: number, x: number) => Promise<void>;
+}
+
 export function useGibsImagery(): GibsImageryHook {
-  const [activeImageryUrl, setActiveImageryUrl] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const fetchImagery = useCallback(
     async (layer: string, date: string, z: number, y: number, x: number): Promise<void> => {
+      abortControllerRef.current?.abort();
       const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
       try {
         const url = await fetchImageryUrl(layer, date, z, y, x, abortController.signal);
-        setActiveImageryUrl(url);
+        if (!abortController.signal.aborted) {
+          useDataStore.getState().setActiveImageryUrl(url);
+        }
       } catch (err) {
-        console.error("gibs imagery fetch failed:", err);
+        if (!abortController.signal.aborted) {
+          console.error("gibs imagery fetch failed:", err);
+        }
       }
     },
     [],
   );
 
-  return { fetchImagery, activeImageryUrl };
+  return { fetchImagery };
 }

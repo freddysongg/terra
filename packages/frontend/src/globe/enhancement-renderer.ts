@@ -90,7 +90,7 @@ export class EnhancementRenderer {
   private unsubscribeData: () => void;
   private unsubscribeLayer: () => void;
 
-  constructor(scene: THREE.Scene, _globe: THREE.Mesh) {
+  constructor(scene: THREE.Scene, globe: THREE.Mesh) {
     this.scene = scene;
 
     this.fireMeshes = {
@@ -106,10 +106,10 @@ export class EnhancementRenderer {
     };
 
     for (const tier of FIRE_CONFIDENCE_TIERS) {
-      this.scene.add(this.fireMeshes[tier]);
+      globe.add(this.fireMeshes[tier]);
     }
     for (const tier of EARTHQUAKE_DEPTH_TIERS) {
-      this.scene.add(this.earthquakeMeshes[tier]);
+      globe.add(this.earthquakeMeshes[tier]);
     }
 
     this.applyLayerVisibility(useLayerStore.getState().activeLayers);

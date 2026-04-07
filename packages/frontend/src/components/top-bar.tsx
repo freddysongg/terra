@@ -2,6 +2,7 @@ import { Search, Settings } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { CATEGORY_META } from "@terra/shared";
 import type { NaturalEvent, SpaceWeatherSummary } from "@terra/shared";
+import { resolveLatestFlare, resolveFlarePrefix } from "./space-weather-card.js";
 import { useEventStore } from "../stores/event-store.js";
 import { useGlobeStore } from "../stores/globe-store.js";
 import { useDataStore } from "../stores/data-store.js";
@@ -26,15 +27,12 @@ function resolveSolarIndicator(spaceWeather: SpaceWeatherSummary | null): SolarI
     return { dotClass: "bg-gray-500", tooltipLabel: "Unavailable" };
   }
 
-  if (spaceWeather.solarFlares.length === 0) {
+  const latestFlare = resolveLatestFlare(spaceWeather.solarFlares);
+  if (latestFlare === null) {
     return { dotClass: "bg-gray-500", tooltipLabel: "No activity" };
   }
 
-  const latestFlare = [...spaceWeather.solarFlares].sort(
-    (a, b) => new Date(b.beginTime).getTime() - new Date(a.beginTime).getTime(),
-  )[0]!;
-
-  const prefix = latestFlare.classType[0]?.toUpperCase() ?? "";
+  const prefix = resolveFlarePrefix(latestFlare.classType);
 
   if (prefix === "X") {
     return { dotClass: "bg-red-500", tooltipLabel: "Solar storm" };
