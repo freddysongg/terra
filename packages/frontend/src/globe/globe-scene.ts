@@ -10,6 +10,7 @@ import { loadGlobeTextures, applyTextureSettings } from "./textures/texture-load
 import { MarkerManager } from "./marker-manager.js";
 import { EnhancementRenderer } from "./enhancement-renderer.js";
 import { AlertPolygonRenderer } from "./alert-polygon-renderer.js";
+import { createAurora } from "./aurora.js";
 import { useEventStore } from "../stores/event-store.js";
 import globeSurfaceVert from "./shaders/globe-surface.vert";
 import globeSurfaceFrag from "./shaders/globe-surface.frag";
@@ -34,6 +35,7 @@ export class GlobeScene {
   private markerManager: MarkerManager | null = null;
   private enhancementRenderer: EnhancementRenderer | null = null;
   private alertPolygonRenderer: AlertPolygonRenderer | null = null;
+  private aurora: ReturnType<typeof createAurora> | null = null;
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -45,6 +47,7 @@ export class GlobeScene {
   private contourGeometry: THREE.SphereGeometry | null = null;
   private contourMaterial: THREE.MeshBasicMaterial | null = null;
   private oceanColorMap: THREE.CanvasTexture | null = null;
+  private clock = new THREE.Clock();
 
   constructor(private config: GlobeSceneConfig) {
     const { canvas } = config;
@@ -137,6 +140,9 @@ export class GlobeScene {
     this.contourMesh = new THREE.Mesh(this.contourGeometry, this.contourMaterial);
     this.globe.add(this.contourMesh);
 
+    this.aurora = createAurora();
+    this.globe.add(this.aurora.mesh);
+
     onProgress?.(85);
 
     this.atmosphere = createAtmosphere(this.camera);
@@ -177,6 +183,7 @@ export class GlobeScene {
       this.renderer.autoClear = true;
     }
 
+    this.aurora?.update(this.clock.getElapsedTime());
     this.markerManager?.update();
     this.enhancementRenderer?.update();
     this.alertPolygonRenderer?.update();
@@ -214,6 +221,7 @@ export class GlobeScene {
     this.contourMaterial?.dispose();
     this.oceanColorMap?.dispose();
 
+    this.aurora?.dispose();
     this.atmosphere?.dispose();
     this.postProcessing?.dispose();
     this.renderer.dispose();
