@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  ci:
+    name: lint, test, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup node 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: install dependencies
+        run: npm ci
+
+      - name: lint
+        run: npm run lint
+
+      - name: type check
+        run: npm run lint
+
+      - name: test
+        run: npm run test
+
+      - name: build
+        run: npm run build
