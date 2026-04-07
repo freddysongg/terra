@@ -8,6 +8,8 @@ import { createContourTexture } from "./textures/contour-lines.js";
 import { createFallbackNightTexture } from "./textures/fallback-night.js";
 import { loadGlobeTextures, applyTextureSettings } from "./textures/texture-loader.js";
 import { MarkerManager } from "./marker-manager.js";
+import { EnhancementRenderer } from "./enhancement-renderer.js";
+import { AlertPolygonRenderer } from "./alert-polygon-renderer.js";
 import { useEventStore } from "../stores/event-store.js";
 import globeSurfaceVert from "./shaders/globe-surface.vert";
 import globeSurfaceFrag from "./shaders/globe-surface.frag";
@@ -30,6 +32,8 @@ export class GlobeScene {
   private animationFrameId: number | null = null;
   private resizeObserver: ResizeObserver;
   private markerManager: MarkerManager | null = null;
+  private enhancementRenderer: EnhancementRenderer | null = null;
+  private alertPolygonRenderer: AlertPolygonRenderer | null = null;
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -145,6 +149,9 @@ export class GlobeScene {
       this.globe,
     );
 
+    this.enhancementRenderer = new EnhancementRenderer(this.scene, this.globe);
+    this.alertPolygonRenderer = new AlertPolygonRenderer(this.scene, this.globe);
+
     onProgress?.(100);
     onReady?.();
 
@@ -171,6 +178,8 @@ export class GlobeScene {
     }
 
     this.markerManager?.update();
+    this.enhancementRenderer?.update();
+    this.alertPolygonRenderer?.update();
   };
 
   private handleResize = (): void => {
@@ -193,6 +202,8 @@ export class GlobeScene {
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.markerManager?.dispose();
+    this.enhancementRenderer?.dispose();
+    this.alertPolygonRenderer?.dispose();
 
     this.starField?.geometry.dispose();
     (this.starField?.material as THREE.PointsMaterial | undefined)?.dispose();

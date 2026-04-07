@@ -10,6 +10,7 @@ interface DataState {
   isLoadingEarthquakes: boolean;
   isLoadingSpaceWeather: boolean;
   isLoadingWeatherAlerts: boolean;
+  activeImageryUrl: string | null;
   setFireHotspots: (hotspots: readonly FireHotspot[]) => void;
   setEarthquakes: (quakes: readonly Earthquake[]) => void;
   setSpaceWeather: (summary: SpaceWeatherSummary) => void;
@@ -18,6 +19,7 @@ interface DataState {
   setLoadingEarthquakes: (loading: boolean) => void;
   setLoadingSpaceWeather: (loading: boolean) => void;
   setLoadingWeatherAlerts: (loading: boolean) => void;
+  setActiveImageryUrl: (url: string | null) => void;
 }
 
 export const useDataStore = create<DataState>()((set) => ({
@@ -29,6 +31,7 @@ export const useDataStore = create<DataState>()((set) => ({
   isLoadingEarthquakes: false,
   isLoadingSpaceWeather: false,
   isLoadingWeatherAlerts: false,
+  activeImageryUrl: null,
   setFireHotspots: (fireHotspots) => set({ fireHotspots }),
   setEarthquakes: (earthquakes) => set({ earthquakes }),
   setSpaceWeather: (spaceWeather) => set({ spaceWeather }),
@@ -37,4 +40,5 @@ export const useDataStore = create<DataState>()((set) => ({
   setLoadingEarthquakes: (isLoadingEarthquakes) => set({ isLoadingEarthquakes }),
   setLoadingSpaceWeather: (isLoadingSpaceWeather) => set({ isLoadingSpaceWeather }),
   setLoadingWeatherAlerts: (isLoadingWeatherAlerts) => set({ isLoadingWeatherAlerts }),
+  setActiveImageryUrl: (activeImageryUrl) => set({ activeImageryUrl }),
 }));
