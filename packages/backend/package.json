@@ -13,6 +13,7 @@
   "dependencies": {
     "@fastify/cors": "^11.0.0",
     "@fastify/rate-limit": "^10.0.0",
+    "@fastify/static": "^9.1.0",
     "@terra/shared": "*",
     "fastify": "^5.0.0"
   },
