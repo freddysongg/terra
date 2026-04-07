@@ -62,8 +62,8 @@ describe("useEonetPolling", () => {
     renderHook(() => useEonetPolling());
 
     await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1000);
     await vi.advanceTimersByTimeAsync(2000);
-    await vi.advanceTimersByTimeAsync(4000);
 
     expect(mockFetch).toHaveBeenCalledTimes(3);
     expect(useEventStore.getState().events).toHaveLength(1);

@@ -1,25 +1,42 @@
 import { X } from "lucide-react";
 import { useLayerStore } from "../stores/layer-store.js";
 import { LAYER_REGISTRY } from "@terra/shared";
-import type { LayerId } from "@terra/shared";
+import type { LayerId, LayerMetadata } from "@terra/shared";
 
 export function BottomBar(): React.ReactElement {
   const activeLayers = useLayerStore((s) => s.activeLayers);
   const toggleLayer = useLayerStore((s) => s.toggleLayer);
 
-  const activeLayerEntries = Array.from(activeLayers).map((id) => ({
-    id,
-    label: LAYER_REGISTRY[id]?.label ?? id,
-  }));
+  const activeLayerIds = Array.from(activeLayers);
+
+  const activeCategoryCount = activeLayerIds.filter(
+    (id) => (LAYER_REGISTRY[id] as LayerMetadata | undefined)?.group === "category",
+  ).length;
+
+  const activeNonCategoryLayers = activeLayerIds
+    .filter(
+      (id) => (LAYER_REGISTRY[id] as LayerMetadata | undefined)?.group !== "category",
+    )
+    .map((id) => ({
+      id,
+      label: LAYER_REGISTRY[id]?.label ?? id,
+    }));
+
+  const hasActiveLayers = activeCategoryCount > 0 || activeNonCategoryLayers.length > 0;
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20">
       <div className="flex items-center gap-3 rounded-full border border-terra-border bg-terra-surface/80 backdrop-blur-md px-4 py-1.5 shadow-lg">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {activeLayerEntries.length === 0 && (
+          {!hasActiveLayers && (
             <span className="text-[10px] text-terra-text-muted">No active layers</span>
           )}
-          {activeLayerEntries.map((entry) => (
+          {activeCategoryCount > 0 && (
+            <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-terra-text">
+              Events ({activeCategoryCount})
+            </span>
+          )}
+          {activeNonCategoryLayers.map((entry) => (
             <button
               key={entry.id}
               onClick={() => toggleLayer(entry.id as LayerId)}
@@ -31,7 +48,7 @@ export function BottomBar(): React.ReactElement {
           ))}
         </div>
 
-        {activeLayerEntries.length > 0 && (
+        {hasActiveLayers && (
           <>
             <div className="h-3 w-px bg-terra-border" />
             <span className="text-[10px] text-terra-text-muted tabular-nums">

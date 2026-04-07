@@ -44,13 +44,20 @@ export interface EventCategory {
   title: string;
 }
 
+export interface NwsAlertGeometry {
+  type: "Polygon";
+  coordinates: number[][][];
+}
+
 export interface NwsAlert {
   id: string;
-  headline: string;
-  severity: "Extreme" | "Severe" | "Moderate" | "Minor" | "Unknown";
   event: string;
-  areaDesc: string;
+  severity: "Extreme" | "Severe" | "Moderate" | "Minor" | "Unknown";
+  urgency: "Immediate" | "Expected" | "Future" | "Past" | "Unknown";
+  headline: string;
+  description: string;
+  geometry: NwsAlertGeometry | null;
   onset: string;
-  expires: string;
+  expiration: string;
   senderName: string;
 }

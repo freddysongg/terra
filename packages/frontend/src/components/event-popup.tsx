@@ -94,6 +94,13 @@ export function EventPopup(): React.ReactElement | null {
             View source
           </a>
         )}
+
+        <button
+          disabled
+          className="mt-1 block text-[10px] text-terra-text-muted cursor-not-allowed"
+        >
+          View satellite imagery (coming soon)
+        </button>
       </div>
     </div>
   );

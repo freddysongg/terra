@@ -3,6 +3,7 @@ export type {
   EventStatus,
   NaturalEvent,
   EventCategory,
+  NwsAlertGeometry,
   NwsAlert,
 } from "./types/events.js";
 
@@ -26,6 +27,7 @@ export type { Earthquake } from "./types/earthquakes.js";
 export type {
   SolarFlare,
   GeomagneticStorm,
+  CoronalMassEjection,
   SpaceWeatherSummary,
 } from "./types/space-weather.js";
 

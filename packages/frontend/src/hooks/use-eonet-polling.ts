@@ -4,7 +4,7 @@ import type { ApiResponse, NaturalEvent } from "@terra/shared";
 
 const POLL_INTERVAL_MS = 10 * 60 * 1000;
 const MAX_RETRIES = 3;
-const BASE_RETRY_DELAY_MS = 2000;
+const BASE_RETRY_DELAY_MS = 1000;
 
 async function fetchEvents(signal: AbortSignal): Promise<readonly NaturalEvent[]> {
   const response = await fetch("/api/events", { signal });

@@ -33,16 +33,19 @@ const MOCK_SPACE_WEATHER: SpaceWeatherSummary = {
     },
   ],
   geomagneticStorms: [],
+  coronalMassEjections: [],
 };
 
 const MOCK_ALERT: NwsAlert = {
   id: "urn:oid:2.49.0.1.840.0.abc",
-  headline: "Tornado Warning",
-  severity: "Extreme",
   event: "Tornado Warning",
-  areaDesc: "Central Oklahoma",
+  severity: "Extreme",
+  urgency: "Immediate",
+  headline: "Tornado Warning",
+  description: "A severe tornado warning has been issued for Central Oklahoma.",
+  geometry: null,
   onset: "2026-04-01T18:00:00Z",
-  expires: "2026-04-01T19:00:00Z",
+  expiration: "2026-04-01T19:00:00Z",
   senderName: "NWS Norman OK",
 };
 

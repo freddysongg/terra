@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ChevronLeft, Activity, Clock } from "lucide-react";
 import { useEventStore } from "../stores/event-store.js";
 import { useLayerStore } from "../stores/layer-store.js";
@@ -109,7 +109,13 @@ export function EventFeed(): React.ReactElement {
   const searchQuery = useEventStore((s) => s.searchQuery);
   const selectedEventId = useEventStore((s) => s.selectedEventId);
   const selectEvent = useEventStore((s) => s.selectEvent);
+  const setSelectedScreenPosition = useEventStore((s) => s.setSelectedScreenPosition);
   const activeLayers = useLayerStore((s) => s.activeLayers);
+
+  const handleFeedSelect = useCallback((eventId: string): void => {
+    selectEvent(eventId);
+    setSelectedScreenPosition({ x: window.innerWidth / 2, y: window.innerHeight / 3 });
+  }, [selectEvent, setSelectedScreenPosition]);
 
   const filteredEvents = useMemo(() => {
     let result = events.filter((e) => activeLayers.has(e.category));
@@ -122,6 +128,12 @@ export function EventFeed(): React.ReactElement {
           CATEGORY_META[e.category].label.toLowerCase().includes(query),
       );
     }
+
+    result.sort((a, b) => {
+      const aTime = a.geometries[a.geometries.length - 1]?.timestamp ?? "";
+      const bTime = b.geometries[b.geometries.length - 1]?.timestamp ?? "";
+      return bTime.localeCompare(aTime);
+    });
 
     return result;
   }, [events, activeLayers, searchQuery]);
@@ -201,7 +213,7 @@ export function EventFeed(): React.ReactElement {
                   key={event.id}
                   event={event}
                   isSelected={event.id === selectedEventId}
-                  onSelect={selectEvent}
+                  onSelect={handleFeedSelect}
                 />
               ))}
             </div>

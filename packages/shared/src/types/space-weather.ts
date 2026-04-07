@@ -13,7 +13,16 @@ export interface GeomagneticStorm {
   kpIndex: number;
 }
 
+export interface CoronalMassEjection {
+  id: string;
+  startTime: string;
+  sourceLocation: string | null;
+  note: string;
+  estimatedEarthArrival: string | null;
+}
+
 export interface SpaceWeatherSummary {
   solarFlares: readonly SolarFlare[];
   geomagneticStorms: readonly GeomagneticStorm[];
+  coronalMassEjections: readonly CoronalMassEjection[];
 }

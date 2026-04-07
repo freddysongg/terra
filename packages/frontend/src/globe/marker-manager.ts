@@ -83,6 +83,7 @@ export class MarkerManager {
   private markers: Map<string, MarkerEntry> = new Map();
   private unsubscribeEvents: () => void;
   private unsubscribeLayers: () => void;
+  private markerClickedThisFrame = false;
 
   constructor(
     private scene: THREE.Scene,
@@ -118,6 +119,7 @@ export class MarkerManager {
   }
 
   private handleCanvasClick = (): void => {
+    if (this.markerClickedThisFrame) return;
     useEventStore.getState().clearSelection();
   };
 
@@ -144,6 +146,8 @@ export class MarkerManager {
       const element = createMarkerElement(event);
       element.addEventListener("click", (e) => {
         e.stopPropagation();
+        this.markerClickedThisFrame = true;
+        requestAnimationFrame(() => { this.markerClickedThisFrame = false; });
         this.handleMarkerClick(event.id, position);
       });
 
