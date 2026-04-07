@@ -1,9 +1,10 @@
 import { Search, Settings } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { CATEGORY_META } from "@terra/shared";
-import type { NaturalEvent } from "@terra/shared";
+import type { NaturalEvent, SpaceWeatherSummary } from "@terra/shared";
 import { useEventStore } from "../stores/event-store.js";
 import { useGlobeStore } from "../stores/globe-store.js";
+import { useDataStore } from "../stores/data-store.js";
 import { Input } from "./ui/input.js";
 import { Button } from "./ui/button.js";
 import { ScrollArea } from "./ui/scroll-area.js";
@@ -15,6 +16,35 @@ import {
   TooltipTrigger,
 } from "./ui/tooltip.js";
 
+interface SolarIndicatorState {
+  dotClass: string;
+  tooltipLabel: string;
+}
+
+function resolveSolarIndicator(spaceWeather: SpaceWeatherSummary | null): SolarIndicatorState {
+  if (spaceWeather === null) {
+    return { dotClass: "bg-gray-500", tooltipLabel: "Unavailable" };
+  }
+
+  if (spaceWeather.solarFlares.length === 0) {
+    return { dotClass: "bg-gray-500", tooltipLabel: "No activity" };
+  }
+
+  const latestFlare = [...spaceWeather.solarFlares].sort(
+    (a, b) => new Date(b.beginTime).getTime() - new Date(a.beginTime).getTime(),
+  )[0]!;
+
+  const prefix = latestFlare.classType[0]?.toUpperCase() ?? "";
+
+  if (prefix === "X") {
+    return { dotClass: "bg-red-500", tooltipLabel: "Solar storm" };
+  }
+  if (prefix === "M") {
+    return { dotClass: "bg-yellow-500", tooltipLabel: "Active" };
+  }
+  return { dotClass: "bg-green-500", tooltipLabel: "Quiet" };
+}
+
 export function TopBar(): React.ReactElement {
   const events = useEventStore((s) => s.events);
   const searchQuery = useEventStore((s) => s.searchQuery);
@@ -23,7 +53,10 @@ export function TopBar(): React.ReactElement {
   const setSelectedScreenPosition = useEventStore((s) => s.setSelectedScreenPosition);
   const isPerformanceMode = useGlobeStore((s) => s.isPerformanceMode);
   const togglePerformanceMode = useGlobeStore((s) => s.togglePerformanceMode);
+  const spaceWeather = useDataStore((s) => s.spaceWeather);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const solarIndicator = resolveSolarIndicator(spaceWeather);
 
   const activeEventCount = events.filter((e) => e.status === "open").length;
 
@@ -109,11 +142,11 @@ export function TopBar(): React.ReactElement {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center px-1">
-                <div className="h-2 w-2 rounded-full bg-gray-500" />
+                <div className={`h-2 w-2 rounded-full ${solarIndicator.dotClass}`} />
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>No data</p>
+              <p>Solar activity: {solarIndicator.tooltipLabel}</p>
             </TooltipContent>
           </Tooltip>
 

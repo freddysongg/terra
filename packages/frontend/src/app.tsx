@@ -5,6 +5,7 @@ import { Vignette } from "./components/vignette.js";
 import { DataProvider } from "./components/data-provider.js";
 import { TopBar } from "./components/top-bar.js";
 import { LayerPanel } from "./components/layer-panel.js";
+import { SpaceWeatherCard } from "./components/space-weather-card.js";
 import { EventFeed } from "./components/event-feed.js";
 import { EventPopup } from "./components/event-popup.js";
 import { BottomBar } from "./components/bottom-bar.js";
@@ -42,6 +43,7 @@ export function App(): React.ReactElement {
             <TopBar />
             <EventFeed />
             <LayerPanel />
+            <SpaceWeatherCard />
             <EventPopup />
             <BottomBar />
           </>
