@@ -64,6 +64,8 @@ describe("data-store", () => {
     expect(state.isLoadingEarthquakes).toBe(false);
     expect(state.isLoadingSpaceWeather).toBe(false);
     expect(state.isLoadingWeatherAlerts).toBe(false);
+    expect(state.activeImageryUrl).toBeNull();
+    expect(state.imageryEventCoordinates).toBeNull();
   });
 
   it("sets fire hotspots", () => {
@@ -89,6 +91,23 @@ describe("data-store", () => {
     useDataStore.getState().setWeatherAlerts([MOCK_ALERT]);
     expect(useDataStore.getState().weatherAlerts).toHaveLength(1);
     expect(useDataStore.getState().weatherAlerts[0]!.severity).toBe("Extreme");
+  });
+
+  it("sets and clears imagery coordinates", () => {
+    useDataStore.getState().setImageryEventCoordinates({ lat: 40.0, lng: -74.0 });
+    expect(useDataStore.getState().imageryEventCoordinates).toEqual({ lat: 40.0, lng: -74.0 });
+
+    useDataStore.getState().setImageryEventCoordinates(null);
+    expect(useDataStore.getState().imageryEventCoordinates).toBeNull();
+  });
+
+  it("clears imagery url and coordinates together", () => {
+    useDataStore.getState().setActiveImageryUrl("https://example.com/tile.jpg");
+    useDataStore.getState().setImageryEventCoordinates({ lat: 35.0, lng: -120.0 });
+
+    useDataStore.getState().clearImagery();
+    expect(useDataStore.getState().activeImageryUrl).toBeNull();
+    expect(useDataStore.getState().imageryEventCoordinates).toBeNull();
   });
 
   it("tracks loading states independently", () => {
