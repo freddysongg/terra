@@ -3,6 +3,7 @@ export type {
   EventStatus,
   NaturalEvent,
   EventCategory,
+  NwsAlert,
 } from "./types/events.js";
 
 export type {

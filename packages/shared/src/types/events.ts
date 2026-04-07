@@ -43,3 +43,14 @@ export interface EventCategory {
   id: EventCategoryId;
   title: string;
 }
+
+export interface NwsAlert {
+  id: string;
+  headline: string;
+  severity: "Extreme" | "Severe" | "Moderate" | "Minor" | "Unknown";
+  event: string;
+  areaDesc: string;
+  onset: string;
+  expires: string;
+  senderName: string;
+}

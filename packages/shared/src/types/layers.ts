@@ -1,6 +1,6 @@
 import type { EventCategoryId } from "./events.js";
 
-export type EnhancementLayerId = "fireDensity" | "seismicDensity";
+export type EnhancementLayerId = "fireDensity" | "seismicDensity" | "weatherAlerts";
 
 export type SpaceWeatherLayerId = "spaceWeather";
 
