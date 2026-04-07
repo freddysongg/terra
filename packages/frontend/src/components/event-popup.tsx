@@ -23,9 +23,15 @@ const CATEGORY_GIBS_LAYER: Partial<Record<EventCategoryId, string>> = {
 
 const GIBS_ZOOM = 3;
 
-function latLngToTileCoords(lat: number, lng: number, zoom: number): { x: number; y: number } {
+interface TileCoords {
+  x: number;
+  y: number;
+}
+
+function latLngToTileCoords(lat: number, lng: number, zoom: number): TileCoords {
   const n = Math.pow(2, zoom);
-  const x = Math.floor(((lng + 180) / 360) * n);
+  /* EPSG:4326 has 2*2^z columns (360° longitude) but only 2^z rows (180° latitude) */
+  const x = Math.floor(((lng + 180) / 360) * n * 2);
   const y = Math.floor(((90 - lat) / 180) * n);
   return { x, y };
 }
