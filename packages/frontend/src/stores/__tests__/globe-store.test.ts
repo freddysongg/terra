@@ -31,4 +31,15 @@ describe("globe-store", () => {
     useGlobeStore.getState().setUserInteracting(false);
     expect(useGlobeStore.getState().isUserInteracting).toBe(false);
   });
+
+  it("starts with performance mode off", () => {
+    expect(useGlobeStore.getState().isPerformanceMode).toBe(false);
+  });
+
+  it("toggles performance mode", () => {
+    useGlobeStore.getState().togglePerformanceMode();
+    expect(useGlobeStore.getState().isPerformanceMode).toBe(true);
+    useGlobeStore.getState().togglePerformanceMode();
+    expect(useGlobeStore.getState().isPerformanceMode).toBe(false);
+  });
 });
