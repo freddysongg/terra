@@ -198,7 +198,9 @@ export class GlobeScene {
 
   private updateCursorCoordinates(): void {
     if (!this.globe || !this.isCursorOverCanvas) {
-      useGlobeStore.getState().setCursorCoordinates(null);
+      if (useGlobeStore.getState().cursorCoordinates !== null) {
+        useGlobeStore.getState().setCursorCoordinates(null);
+      }
       return;
     }
 
@@ -206,7 +208,9 @@ export class GlobeScene {
     const intersections = this.raycaster.intersectObject(this.globe);
 
     if (intersections.length === 0) {
-      useGlobeStore.getState().setCursorCoordinates(null);
+      if (useGlobeStore.getState().cursorCoordinates !== null) {
+        useGlobeStore.getState().setCursorCoordinates(null);
+      }
       return;
     }
 
