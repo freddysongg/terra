@@ -51,6 +51,8 @@ export class GlobeScene {
   private flyToStart = new THREE.Vector3();
   private flyToEnd = new THREE.Vector3();
   private unsubFlyTo: (() => void) | null = null;
+  private unsubPerformanceMode: (() => void) | null = null;
+  private isPerformanceMode = false;
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -100,6 +102,11 @@ export class GlobeScene {
       this.startFlyTo(target.lat, target.lng);
       useGlobeStore.getState().setFlyToTarget(null);
     });
+
+    this.unsubPerformanceMode = useGlobeStore.subscribe(
+      (state) => state.isPerformanceMode,
+      (isOn) => this.applyPerformanceMode(isOn),
+    );
 
     this.init().catch((err) => {
       console.error("globe scene initialization failed:", err);
@@ -227,6 +234,14 @@ export class GlobeScene {
     }
   }
 
+  private applyPerformanceMode(isOn: boolean): void {
+    this.isPerformanceMode = isOn;
+
+    if (this.contourMesh) {
+      this.contourMesh.visible = !isOn;
+    }
+  }
+
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
     const deltaTime = this.clock.getDelta();
@@ -236,7 +251,12 @@ export class GlobeScene {
     this.updateCursorCoordinates();
 
     if (this.postProcessing && this.atmosphere) {
-      this.postProcessing.composer.render();
+      if (this.isPerformanceMode) {
+        /* Bypass the entire post-processing pipeline to save GPU work */
+        this.renderer.render(this.scene, this.camera);
+      } else {
+        this.postProcessing.composer.render();
+      }
       this.renderer.autoClear = false;
       this.renderer.render(this.atmosphere.scene, this.camera);
       this.renderer.autoClear = true;
@@ -303,6 +323,7 @@ export class GlobeScene {
     this.config.canvas.removeEventListener("mousemove", this.handleMouseMove);
     this.config.canvas.removeEventListener("mouseleave", this.handleMouseLeave);
     this.unsubFlyTo?.();
+    this.unsubPerformanceMode?.();
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.markerManager?.dispose();
