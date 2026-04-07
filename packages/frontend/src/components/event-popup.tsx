@@ -6,6 +6,8 @@ import { Button } from "./ui/button.js";
 import { Badge } from "./ui/badge.js";
 import { CategoryIcon } from "./category-icon.js";
 
+type PopupPlacement = "above" | "below" | "left" | "right";
+
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("en-US", {
     month: "short",
@@ -17,6 +19,103 @@ function formatDate(dateString: string): string {
 function formatMagnitude(event: NaturalEvent): string | null {
   if (!event.magnitude) return null;
   return `${event.magnitude.value} ${event.magnitude.unit}`;
+}
+
+function resolvePopupPlacement(x: number, y: number): PopupPlacement {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  if (x > vw * 0.7) return "left";
+  if (x < vw * 0.3) return "right";
+  if (y < vh * 0.2) return "below";
+  return "above";
+}
+
+function resolvePopupTransform(placement: PopupPlacement): string {
+  switch (placement) {
+    case "above":
+      return "translate(-50%, -100%) translateY(-16px)";
+    case "below":
+      return "translate(-50%, 16px)";
+    case "left":
+      return "translate(calc(-100% - 16px), -50%)";
+    case "right":
+      return "translate(16px, -50%)";
+  }
+}
+
+interface ConnectorProps {
+  placement: PopupPlacement;
+  categoryColor: string;
+}
+
+function ConnectorLine({ placement, categoryColor }: ConnectorProps): React.ReactElement | null {
+  const connectorLength = 16;
+
+  const isVertical = placement === "above" || placement === "below";
+  const width = isVertical ? 1 : connectorLength;
+  const height = isVertical ? connectorLength : 1;
+
+  let x1: number;
+  let y1: number;
+  let x2: number;
+  let y2: number;
+
+  switch (placement) {
+    case "above":
+      x1 = 0.5;
+      y1 = connectorLength;
+      x2 = 0.5;
+      y2 = 0;
+      break;
+    case "below":
+      x1 = 0.5;
+      y1 = 0;
+      x2 = 0.5;
+      y2 = connectorLength;
+      break;
+    case "left":
+      x1 = connectorLength;
+      y1 = 0.5;
+      x2 = 0;
+      y2 = 0.5;
+      break;
+    case "right":
+      x1 = 0;
+      y1 = 0.5;
+      x2 = connectorLength;
+      y2 = 0.5;
+      break;
+  }
+
+  const positionStyle: React.CSSProperties =
+    placement === "above"
+      ? { bottom: -connectorLength, left: "50%", transform: "translateX(-50%)" }
+      : placement === "below"
+        ? { top: -connectorLength, left: "50%", transform: "translateX(-50%)" }
+        : placement === "left"
+          ? { right: -connectorLength, top: "50%", transform: "translateY(-50%)" }
+          : { left: -connectorLength, top: "50%", transform: "translateY(-50%)" };
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className="absolute pointer-events-none"
+      style={positionStyle}
+    >
+      <line
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        stroke={categoryColor}
+        strokeWidth={1}
+        strokeOpacity={0.4}
+      />
+    </svg>
+  );
 }
 
 export function EventPopup(): React.ReactElement | null {
@@ -34,16 +133,20 @@ export function EventPopup(): React.ReactElement | null {
   const lastGeometry = selectedEvent.geometries[selectedEvent.geometries.length - 1];
   const magnitudeText = formatMagnitude(selectedEvent);
 
+  const placement = resolvePopupPlacement(screenPosition.x, screenPosition.y);
+  const transform = resolvePopupTransform(placement);
+
   return (
     <div
       className="fixed z-30 pointer-events-auto"
       style={{
         left: `${screenPosition.x}px`,
         top: `${screenPosition.y}px`,
-        transform: "translate(-50%, -100%) translateY(-16px)",
+        transform,
       }}
     >
-      <div className="w-[260px] rounded-lg border border-terra-border bg-terra-surface/90 backdrop-blur-md shadow-xl p-3">
+      <div className="relative w-[280px] rounded-lg border border-terra-border bg-terra-surface/90 backdrop-blur-md shadow-xl p-3">
+        <ConnectorLine placement={placement} categoryColor={categoryMeta.color} />
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="text-sm font-medium text-terra-text leading-tight">
             {selectedEvent.title}
