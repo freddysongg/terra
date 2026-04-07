@@ -1,4 +1,4 @@
-export type ApiSource = "eonet" | "firms" | "usgs" | "donki" | "gibs";
+export type ApiSource = "eonet" | "firms" | "usgs" | "nws" | "donki" | "gibs";
 
 export type ApiErrorCode =
   | "UPSTREAM_UNAVAILABLE"
