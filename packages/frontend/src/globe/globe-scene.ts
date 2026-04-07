@@ -12,6 +12,7 @@ import { EnhancementRenderer } from "./enhancement-renderer.js";
 import { AlertPolygonRenderer } from "./alert-polygon-renderer.js";
 import { createAurora } from "./aurora.js";
 import { StormTrackRenderer } from "./storm-tracks.js";
+import { ImageryOverlay } from "./imagery-overlay.js";
 import { useEventStore } from "../stores/event-store.js";
 import { useGlobeStore } from "../stores/globe-store.js";
 import globeSurfaceVert from "./shaders/globe-surface.vert";
@@ -42,6 +43,7 @@ export class GlobeScene {
   private enhancementRenderer: EnhancementRenderer | null = null;
   private alertPolygonRenderer: AlertPolygonRenderer | null = null;
   private stormTrackRenderer: StormTrackRenderer | null = null;
+  private imageryOverlay: ImageryOverlay | null = null;
   private aurora: ReturnType<typeof createAurora> | null = null;
   private raycaster = new THREE.Raycaster();
   private cursorNdc = new THREE.Vector2();
@@ -189,6 +191,7 @@ export class GlobeScene {
     this.enhancementRenderer = new EnhancementRenderer(this.scene, this.globe);
     this.alertPolygonRenderer = new AlertPolygonRenderer(this.scene, this.globe);
     this.stormTrackRenderer = new StormTrackRenderer(this.scene, this.globe);
+    this.imageryOverlay = new ImageryOverlay(this.globe);
 
     onProgress?.(100);
     onReady?.();
@@ -265,6 +268,7 @@ export class GlobeScene {
     this.enhancementRenderer?.update();
     this.alertPolygonRenderer?.update();
     this.stormTrackRenderer?.update();
+    this.imageryOverlay?.update();
   };
 
   private updateCursorCoordinates(): void {
@@ -330,6 +334,7 @@ export class GlobeScene {
     this.enhancementRenderer?.dispose();
     this.alertPolygonRenderer?.dispose();
     this.stormTrackRenderer?.dispose();
+    this.imageryOverlay?.dispose();
 
     this.starField?.geometry.dispose();
     (this.starField?.material as THREE.PointsMaterial | undefined)?.dispose();
