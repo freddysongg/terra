@@ -3,7 +3,9 @@ import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer
 import { useEventStore } from "../stores/event-store.js";
 import { useLayerStore } from "../stores/layer-store.js";
 import { CATEGORY_META } from "@terra/shared";
+import { computeClusters } from "./clustering.js";
 import type { NaturalEvent, EventCategoryId } from "@terra/shared";
+import type { ClusterInput, Cluster } from "./clustering.js";
 
 const MARKER_RADIUS = 1.01;
 const BACK_FACE_THRESHOLD = 0;
@@ -13,6 +15,12 @@ const ICON_SIZE = 10;
 const LAYER_FADE_DURATION_MS = 300;
 const RING_COUNT = 3;
 const RING_STAGGER_DELAY_S = 0.5;
+const CLUSTER_CELL_SIZE_AT_MAX_ZOOM = 20;
+const CLUSTER_CELL_SIZE_AT_MIN_ZOOM = 100;
+const CAMERA_MIN_DISTANCE = 1.8;
+const CAMERA_MAX_DISTANCE = 3.5;
+const CLUSTER_MIN_SIZE = 16;
+const CLUSTER_MAX_SIZE = 24;
 
 let styleInjected = false;
 
@@ -78,6 +86,48 @@ interface MarkerEntry {
   category: EventCategoryId;
   position: THREE.Vector3;
   color: string;
+}
+
+interface ClusterBubbleEntry {
+  element: HTMLDivElement;
+  countLabel: HTMLSpanElement;
+}
+
+function computeGridCellSize(cameraDistance: number): number {
+  const normalized = Math.max(0, Math.min(1,
+    (cameraDistance - CAMERA_MIN_DISTANCE) / (CAMERA_MAX_DISTANCE - CAMERA_MIN_DISTANCE),
+  ));
+  return CLUSTER_CELL_SIZE_AT_MAX_ZOOM
+    + normalized * (CLUSTER_CELL_SIZE_AT_MIN_ZOOM - CLUSTER_CELL_SIZE_AT_MAX_ZOOM);
+}
+
+function clusterBubbleSize(memberCount: number): number {
+  return Math.min(CLUSTER_MIN_SIZE + memberCount, CLUSTER_MAX_SIZE);
+}
+
+function createClusterBubble(): ClusterBubbleEntry {
+  const element = document.createElement("div");
+  element.className = "terra-cluster-bubble";
+  element.style.cssText = `
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    border: 1.5px solid rgba(255,255,255,0.5);
+    box-shadow: 0 0 8px rgba(0,0,0,0.4);
+    transition: opacity 0.2s ease;
+  `;
+
+  const countLabel = document.createElement("span");
+  element.appendChild(countLabel);
+
+  return { element, countLabel };
 }
 
 function latLngToVector3(latitude: number, longitude: number): THREE.Vector3 {
@@ -198,6 +248,9 @@ function createMarkerElement(event: NaturalEvent): HTMLDivElement {
 export class MarkerManager {
   private css2dRenderer: CSS2DRenderer;
   private markers: Map<string, MarkerEntry> = new Map();
+  private clusterBubbles: ClusterBubbleEntry[] = [];
+  private clusterOverlay: HTMLDivElement;
+  private clusteredMarkerIds: Set<string> = new Set();
   private unsubscribeEvents: () => void;
   private unsubscribeLayers: () => void;
   private unsubscribeSelection: () => void;
@@ -218,6 +271,18 @@ export class MarkerManager {
     this.css2dRenderer.domElement.style.left = "0";
     this.css2dRenderer.domElement.style.pointerEvents = "none";
     canvas.parentElement?.appendChild(this.css2dRenderer.domElement);
+
+    this.clusterOverlay = document.createElement("div");
+    this.clusterOverlay.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+    `;
+    canvas.parentElement?.appendChild(this.clusterOverlay);
 
     this.unsubscribeEvents = useEventStore.subscribe(
       (state, prevState) => {
@@ -378,8 +443,82 @@ export class MarkerManager {
     }
   }
 
+  private updateClusters(): void {
+    const activeLayers = useLayerStore.getState().activeLayers;
+    const parent = this.canvas.parentElement;
+    const width = parent?.clientWidth ?? this.canvas.clientWidth;
+    const height = parent?.clientHeight ?? this.canvas.clientHeight;
+    const cameraDirection = this.camera.position.clone().normalize().negate();
+
+    const visibleInputs: ClusterInput[] = [];
+
+    for (const [, entry] of this.markers) {
+      if (!entry.object.visible) continue;
+      if (!activeLayers.has(entry.category)) continue;
+
+      const worldPos = new THREE.Vector3();
+      this.globe.localToWorld(worldPos.copy(entry.position));
+      const markerNormal = worldPos.clone().normalize();
+      const isBackFacing = markerNormal.dot(cameraDirection) < BACK_FACE_THRESHOLD;
+      if (isBackFacing) continue;
+
+      const screenPos = projectToScreen(worldPos, this.camera, width, height);
+      visibleInputs.push({
+        id: entry.eventId,
+        screenX: screenPos.x,
+        screenY: screenPos.y,
+        category: entry.category,
+      });
+    }
+
+    const cameraDistance = this.camera.position.length();
+    const gridCellSize = computeGridCellSize(cameraDistance);
+    const clusters = computeClusters(visibleInputs, gridCellSize);
+
+    this.clusteredMarkerIds.clear();
+    const multiMemberClusters: Cluster[] = [];
+
+    for (const cluster of clusters) {
+      if (cluster.members.length > 1) {
+        multiMemberClusters.push(cluster);
+        for (const member of cluster.members) {
+          this.clusteredMarkerIds.add(member.id);
+        }
+      }
+    }
+
+    this.reconcileClusterBubbles(multiMemberClusters);
+  }
+
+  private reconcileClusterBubbles(clusters: Cluster[]): void {
+    while (this.clusterBubbles.length < clusters.length) {
+      const bubble = createClusterBubble();
+      this.clusterOverlay.appendChild(bubble.element);
+      this.clusterBubbles.push(bubble);
+    }
+
+    for (let i = 0; i < this.clusterBubbles.length; i++) {
+      const bubble = this.clusterBubbles[i]!;
+      if (i < clusters.length) {
+        const cluster = clusters[i]!;
+        const size = clusterBubbleSize(cluster.members.length);
+        bubble.element.style.display = "flex";
+        bubble.element.style.width = `${size}px`;
+        bubble.element.style.height = `${size}px`;
+        bubble.element.style.left = `${cluster.centerX - size / 2}px`;
+        bubble.element.style.top = `${cluster.centerY - size / 2}px`;
+        bubble.element.style.background = cluster.color;
+        bubble.countLabel.textContent = String(cluster.members.length);
+      } else {
+        bubble.element.style.display = "none";
+      }
+    }
+  }
+
   update(): void {
     const cameraDirection = this.camera.position.clone().normalize().negate();
+
+    this.updateClusters();
 
     for (const [, entry] of this.markers) {
       if (!entry.object.visible) continue;
@@ -390,10 +529,12 @@ export class MarkerManager {
 
       const dotProduct = markerNormal.dot(cameraDirection);
       const isBackFacing = dotProduct < BACK_FACE_THRESHOLD;
+      const isClustered = this.clusteredMarkerIds.has(entry.eventId);
+
       if (!this.fadingOutIds.has(entry.eventId)) {
-        entry.element.style.opacity = isBackFacing ? "0" : "1";
+        entry.element.style.opacity = (isBackFacing || isClustered) ? "0" : "1";
       }
-      entry.element.style.pointerEvents = isBackFacing ? "none" : "auto";
+      entry.element.style.pointerEvents = (isBackFacing || isClustered) ? "none" : "auto";
     }
 
     this.css2dRenderer.render(this.scene, this.camera);
@@ -415,5 +556,8 @@ export class MarkerManager {
     this.markers.clear();
 
     this.css2dRenderer.domElement.remove();
+    this.clusterOverlay.remove();
+    this.clusterBubbles = [];
+    this.clusteredMarkerIds.clear();
   }
 }

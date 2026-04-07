@@ -10,7 +10,9 @@ import { loadGlobeTextures, applyTextureSettings } from "./textures/texture-load
 import { MarkerManager } from "./marker-manager.js";
 import { EnhancementRenderer } from "./enhancement-renderer.js";
 import { AlertPolygonRenderer } from "./alert-polygon-renderer.js";
+import { createAurora } from "./aurora.js";
 import { useEventStore } from "../stores/event-store.js";
+import { useGlobeStore } from "../stores/globe-store.js";
 import globeSurfaceVert from "./shaders/globe-surface.vert";
 import globeSurfaceFrag from "./shaders/globe-surface.frag";
 
@@ -34,6 +36,10 @@ export class GlobeScene {
   private markerManager: MarkerManager | null = null;
   private enhancementRenderer: EnhancementRenderer | null = null;
   private alertPolygonRenderer: AlertPolygonRenderer | null = null;
+  private aurora: ReturnType<typeof createAurora> | null = null;
+  private raycaster = new THREE.Raycaster();
+  private cursorNdc = new THREE.Vector2();
+  private isCursorOverCanvas = false;
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -45,6 +51,7 @@ export class GlobeScene {
   private contourGeometry: THREE.SphereGeometry | null = null;
   private contourMaterial: THREE.MeshBasicMaterial | null = null;
   private oceanColorMap: THREE.CanvasTexture | null = null;
+  private clock = new THREE.Clock();
 
   constructor(private config: GlobeSceneConfig) {
     const { canvas } = config;
@@ -73,6 +80,9 @@ export class GlobeScene {
 
     this.starField = createStarField();
     this.scene.add(this.starField);
+
+    canvas.addEventListener("mousemove", this.handleMouseMove);
+    canvas.addEventListener("mouseleave", this.handleMouseLeave);
 
     this.init().catch((err) => {
       console.error("globe scene initialization failed:", err);
@@ -137,6 +147,9 @@ export class GlobeScene {
     this.contourMesh = new THREE.Mesh(this.contourGeometry, this.contourMaterial);
     this.globe.add(this.contourMesh);
 
+    this.aurora = createAurora();
+    this.globe.add(this.aurora.mesh);
+
     onProgress?.(85);
 
     this.atmosphere = createAtmosphere(this.camera);
@@ -169,6 +182,8 @@ export class GlobeScene {
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
     this.controls.update();
+    this.aurora?.update(this.clock.getElapsedTime());
+    this.updateCursorCoordinates();
 
     if (this.postProcessing && this.atmosphere) {
       this.postProcessing.composer.render();
@@ -176,10 +191,45 @@ export class GlobeScene {
       this.renderer.render(this.atmosphere.scene, this.camera);
       this.renderer.autoClear = true;
     }
-
     this.markerManager?.update();
     this.enhancementRenderer?.update();
     this.alertPolygonRenderer?.update();
+  };
+
+  private updateCursorCoordinates(): void {
+    if (!this.globe || !this.isCursorOverCanvas) {
+      if (useGlobeStore.getState().cursorCoordinates !== null) {
+        useGlobeStore.getState().setCursorCoordinates(null);
+      }
+      return;
+    }
+
+    this.raycaster.setFromCamera(this.cursorNdc, this.camera);
+    const intersections = this.raycaster.intersectObject(this.globe);
+
+    if (intersections.length === 0) {
+      if (useGlobeStore.getState().cursorCoordinates !== null) {
+        useGlobeStore.getState().setCursorCoordinates(null);
+      }
+      return;
+    }
+
+    const localPoint = this.globe.worldToLocal(intersections[0]!.point.clone()).normalize();
+    const lat = Math.asin(localPoint.y) * (180 / Math.PI);
+    const lng = Math.atan2(localPoint.z, -localPoint.x) * (180 / Math.PI);
+
+    useGlobeStore.getState().setCursorCoordinates({ lat, lng });
+  }
+
+  private handleMouseMove = (event: MouseEvent): void => {
+    const rect = this.config.canvas.getBoundingClientRect();
+    this.cursorNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.cursorNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.isCursorOverCanvas = true;
+  };
+
+  private handleMouseLeave = (): void => {
+    this.isCursorOverCanvas = false;
   };
 
   private handleResize = (): void => {
@@ -199,6 +249,8 @@ export class GlobeScene {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
     }
+    this.config.canvas.removeEventListener("mousemove", this.handleMouseMove);
+    this.config.canvas.removeEventListener("mouseleave", this.handleMouseLeave);
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.markerManager?.dispose();
@@ -214,6 +266,7 @@ export class GlobeScene {
     this.contourMaterial?.dispose();
     this.oceanColorMap?.dispose();
 
+    this.aurora?.dispose();
     this.atmosphere?.dispose();
     this.postProcessing?.dispose();
     this.renderer.dispose();
