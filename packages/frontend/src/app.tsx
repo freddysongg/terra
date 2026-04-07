@@ -1,9 +1,13 @@
+import { GlobeCanvas } from "./components/globe-canvas.js";
+import { LoadingScreen } from "./components/loading-screen.js";
+import { Vignette } from "./components/vignette.js";
+
 export function App(): React.ReactElement {
   return (
     <div className="relative w-full h-full">
-      <div className="absolute inset-0 flex items-center justify-center text-terra-text-muted">
-        TERRA — globe will mount here
-      </div>
+      <GlobeCanvas />
+      <Vignette />
+      <LoadingScreen />
     </div>
   );
 }
