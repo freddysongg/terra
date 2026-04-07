@@ -44,7 +44,7 @@ export async function loadGlobeTextures(
   return { night, topo };
 }
 
-export function configureTexture(
+export function applyTextureSettings(
   texture: THREE.Texture,
   maxAnisotropy: number,
   colorSpace: THREE.ColorSpace,

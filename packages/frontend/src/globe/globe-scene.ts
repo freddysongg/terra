@@ -6,7 +6,7 @@ import { createPostProcessing } from "./post-processing.js";
 import { createOceanColorMap } from "./textures/ocean-color.js";
 import { createContourTexture } from "./textures/contour-lines.js";
 import { createFallbackNightTexture } from "./textures/fallback-night.js";
-import { loadGlobeTextures, configureTexture } from "./textures/texture-loader.js";
+import { loadGlobeTextures, applyTextureSettings } from "./textures/texture-loader.js";
 import globeSurfaceVert from "./shaders/globe-surface.vert";
 import globeSurfaceFrag from "./shaders/globe-surface.frag";
 
@@ -105,8 +105,8 @@ export class GlobeScene {
     onProgress?.(60);
 
     const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
-    if (night) configureTexture(night, maxAniso, THREE.SRGBColorSpace);
-    if (topo) configureTexture(topo, maxAniso, THREE.LinearSRGBColorSpace);
+    if (night) applyTextureSettings(night, maxAniso, THREE.SRGBColorSpace);
+    if (topo) applyTextureSettings(topo, maxAniso, THREE.LinearSRGBColorSpace);
 
     const finalNight = night ?? createFallbackNightTexture();
     onProgress?.(75);

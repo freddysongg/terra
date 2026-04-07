@@ -11,12 +11,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@terra/shared": "*",
     "@fastify/cors": "^11.0.0",
     "@fastify/rate-limit": "^10.0.0",
+    "@terra/shared": "*",
     "fastify": "^5.0.0"
   },
   "devDependencies": {
+    "@types/node": "^25.5.2",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

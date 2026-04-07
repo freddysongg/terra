@@ -4,7 +4,7 @@ import { registerRateLimit } from "./plugins/rate-limit.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerEventsRoute } from "./routes/events.js";
 
-const PORT = 3001;
+const PORT = Number(process.env.PORT ?? 3001);
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
@@ -22,4 +22,10 @@ async function start(): Promise<void> {
   await app.listen({ port: PORT, host: "0.0.0.0" });
 }
 
-start();
+const isDirectRun = process.argv[1]?.endsWith("index.ts") || process.argv[1]?.endsWith("index.js");
+if (isDirectRun) {
+  start().catch((err) => {
+    console.error("failed to start server:", err);
+    process.exit(1);
+  });
+}
