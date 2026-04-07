@@ -35,6 +35,11 @@ export class GlobeScene {
   private globe: THREE.Mesh | null = null;
   private globeMaterial: THREE.ShaderMaterial | null = null;
   private contourMesh: THREE.Mesh | null = null;
+  private starField: THREE.Points | null = null;
+  private globeGeometry: THREE.SphereGeometry | null = null;
+  private contourGeometry: THREE.SphereGeometry | null = null;
+  private contourMaterial: THREE.MeshBasicMaterial | null = null;
+  private oceanColorMap: THREE.CanvasTexture | null = null;
 
   constructor(private config: GlobeSceneConfig) {
     const { canvas } = config;
@@ -61,9 +66,12 @@ export class GlobeScene {
     this.resizeObserver = new ResizeObserver(this.handleResize);
     this.resizeObserver.observe(canvas.parentElement ?? canvas);
 
-    this.scene.add(createStarField());
+    this.starField = createStarField();
+    this.scene.add(this.starField);
 
-    this.init();
+    this.init().catch((err) => {
+      console.error("globe scene initialization failed:", err);
+    });
   }
 
   private createControls(): OrbitControls {
@@ -103,30 +111,31 @@ export class GlobeScene {
     const finalNight = night ?? createFallbackNightTexture();
     onProgress?.(75);
 
+    this.oceanColorMap = createOceanColorMap();
     this.globeMaterial = new THREE.ShaderMaterial({
       vertexShader: globeSurfaceVert,
       fragmentShader: globeSurfaceFrag,
       uniforms: {
         uNightMap: { value: finalNight },
         uTopoMap: { value: topo ?? this.createFlatTexture() },
-        uOceanMap: { value: createOceanColorMap() },
+        uOceanMap: { value: this.oceanColorMap },
       },
     });
 
-    const globeGeometry = new THREE.SphereGeometry(1, 200, 200);
-    this.globe = new THREE.Mesh(globeGeometry, this.globeMaterial);
+    this.globeGeometry = new THREE.SphereGeometry(1, 200, 200);
+    this.globe = new THREE.Mesh(this.globeGeometry, this.globeMaterial);
     this.globe.rotation.y = -Math.PI / 2;
     this.globe.rotation.x = THREE.MathUtils.degToRad(GLOBE_TILT_DEG);
     this.scene.add(this.globe);
 
-    const contourGeometry = new THREE.SphereGeometry(1.003, 200, 200);
-    const contourMaterial = new THREE.MeshBasicMaterial({
+    this.contourGeometry = new THREE.SphereGeometry(1.003, 200, 200);
+    this.contourMaterial = new THREE.MeshBasicMaterial({
       map: createContourTexture(),
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
-    this.contourMesh = new THREE.Mesh(contourGeometry, contourMaterial);
+    this.contourMesh = new THREE.Mesh(this.contourGeometry, this.contourMaterial);
     this.globe.add(this.contourMesh);
 
     onProgress?.(85);
@@ -179,6 +188,16 @@ export class GlobeScene {
     if (this.autoRotateTimer) clearTimeout(this.autoRotateTimer);
     this.resizeObserver.disconnect();
     this.controls.dispose();
+
+    this.starField?.geometry.dispose();
+    (this.starField?.material as THREE.PointsMaterial | undefined)?.dispose();
+    this.globeGeometry?.dispose();
+    this.globeMaterial?.dispose();
+    this.contourGeometry?.dispose();
+    this.contourMaterial?.map?.dispose();
+    this.contourMaterial?.dispose();
+    this.oceanColorMap?.dispose();
+
     this.atmosphere?.dispose();
     this.postProcessing?.dispose();
     this.renderer.dispose();
