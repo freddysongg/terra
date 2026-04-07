@@ -1,3 +1,5 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance } from "fastify";
 import { registerCors } from "./plugins/cors.js";
 import { registerRateLimit } from "./plugins/rate-limit.js";
@@ -23,6 +25,23 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerAlertsRoute(app);
   await registerSpaceWeatherRoute(app);
   await registerImageryRoute(app);
+
+  if (process.env.NODE_ENV === "production") {
+    const staticPlugin = await import("@fastify/static");
+    const frontendDist = path.resolve(
+      fileURLToPath(import.meta.url),
+      "../../../frontend/dist",
+    );
+    await app.register(staticPlugin.default, {
+      root: frontendDist,
+      wildcard: false,
+    });
+
+    /* SPA fallback — unmatched routes serve index.html so client-side routing works */
+    app.setNotFoundHandler(async (_request, reply) => {
+      return reply.sendFile("index.html");
+    });
+  }
 
   return app;
 }
