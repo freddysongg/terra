@@ -6,19 +6,30 @@ describe("layer-store", () => {
     useLayerStore.setState(useLayerStore.getInitialState());
   });
 
-  it("starts with no active layers", () => {
-    expect(useLayerStore.getState().activeLayers.size).toBe(0);
+  it("starts with all 13 EONET categories active", () => {
+    const { activeLayers } = useLayerStore.getState();
+    expect(activeLayers.size).toBe(13);
+    expect(activeLayers.has("wildfires")).toBe(true);
+    expect(activeLayers.has("earthquakes")).toBe(true);
+    expect(activeLayers.has("volcanoes")).toBe(true);
+    expect(activeLayers.has("floods")).toBe(true);
+    expect(activeLayers.has("severeStorms")).toBe(true);
   });
 
-  it("toggles a layer on", () => {
+  it("toggles a default-active layer off", () => {
+    useLayerStore.getState().toggleLayer("wildfires");
+    expect(useLayerStore.getState().activeLayers.has("wildfires")).toBe(false);
+  });
+
+  it("toggles a layer back on after toggling off", () => {
+    useLayerStore.getState().toggleLayer("wildfires");
     useLayerStore.getState().toggleLayer("wildfires");
     expect(useLayerStore.getState().activeLayers.has("wildfires")).toBe(true);
   });
 
-  it("toggles a layer off", () => {
-    useLayerStore.getState().toggleLayer("wildfires");
-    useLayerStore.getState().toggleLayer("wildfires");
-    expect(useLayerStore.getState().activeLayers.has("wildfires")).toBe(false);
+  it("toggles a non-default layer on", () => {
+    useLayerStore.getState().toggleLayer("fireDensity");
+    expect(useLayerStore.getState().activeLayers.has("fireDensity")).toBe(true);
   });
 
   it("sets multiple layers at once", () => {

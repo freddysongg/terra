@@ -1,5 +1,21 @@
 import { create } from "zustand";
-import type { LayerId } from "@terra/shared";
+import type { LayerId, EventCategoryId } from "@terra/shared";
+
+const DEFAULT_ACTIVE_CATEGORIES: EventCategoryId[] = [
+  "drought",
+  "dustHaze",
+  "earthquakes",
+  "floods",
+  "landslides",
+  "manmade",
+  "seaLakeIce",
+  "severeStorms",
+  "snow",
+  "tempExtremes",
+  "volcanoes",
+  "waterColor",
+  "wildfires",
+];
 
 interface LayerState {
   activeLayers: Set<LayerId>;
@@ -8,7 +24,7 @@ interface LayerState {
 }
 
 export const useLayerStore = create<LayerState>()((set) => ({
-  activeLayers: new Set<LayerId>(),
+  activeLayers: new Set<LayerId>(DEFAULT_ACTIVE_CATEGORIES),
 
   toggleLayer: (id) =>
     set((state) => {
