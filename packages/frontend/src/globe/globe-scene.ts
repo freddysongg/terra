@@ -175,6 +175,7 @@ export class GlobeScene {
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
     this.controls.update();
+    this.aurora?.update(this.clock.getElapsedTime());
 
     if (this.postProcessing && this.atmosphere) {
       this.postProcessing.composer.render();
@@ -182,8 +183,6 @@ export class GlobeScene {
       this.renderer.render(this.atmosphere.scene, this.camera);
       this.renderer.autoClear = true;
     }
-
-    this.aurora?.update(this.clock.getElapsedTime());
     this.markerManager?.update();
     this.enhancementRenderer?.update();
     this.alertPolygonRenderer?.update();
