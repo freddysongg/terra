@@ -42,4 +42,19 @@ describe("globe-store", () => {
     useGlobeStore.getState().togglePerformanceMode();
     expect(useGlobeStore.getState().isPerformanceMode).toBe(false);
   });
+
+  it("starts with null cursor coordinates", () => {
+    expect(useGlobeStore.getState().cursorCoordinates).toBeNull();
+  });
+
+  it("sets cursor coordinates", () => {
+    useGlobeStore.getState().setCursorCoordinates({ lat: 44.2, lng: -121.8 });
+    expect(useGlobeStore.getState().cursorCoordinates).toEqual({ lat: 44.2, lng: -121.8 });
+  });
+
+  it("clears cursor coordinates", () => {
+    useGlobeStore.getState().setCursorCoordinates({ lat: 10, lng: 20 });
+    useGlobeStore.getState().setCursorCoordinates(null);
+    expect(useGlobeStore.getState().cursorCoordinates).toBeNull();
+  });
 });

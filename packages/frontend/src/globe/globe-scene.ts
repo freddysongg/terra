@@ -12,6 +12,7 @@ import { EnhancementRenderer } from "./enhancement-renderer.js";
 import { AlertPolygonRenderer } from "./alert-polygon-renderer.js";
 import { createAurora } from "./aurora.js";
 import { useEventStore } from "../stores/event-store.js";
+import { useGlobeStore } from "../stores/globe-store.js";
 import globeSurfaceVert from "./shaders/globe-surface.vert";
 import globeSurfaceFrag from "./shaders/globe-surface.frag";
 
@@ -36,6 +37,8 @@ export class GlobeScene {
   private enhancementRenderer: EnhancementRenderer | null = null;
   private alertPolygonRenderer: AlertPolygonRenderer | null = null;
   private aurora: ReturnType<typeof createAurora> | null = null;
+  private raycaster = new THREE.Raycaster();
+  private cursorNdc = new THREE.Vector2();
 
   private atmosphere: ReturnType<typeof createAtmosphere> | null = null;
   private postProcessing: ReturnType<typeof createPostProcessing> | null = null;
@@ -76,6 +79,9 @@ export class GlobeScene {
 
     this.starField = createStarField();
     this.scene.add(this.starField);
+
+    canvas.addEventListener("mousemove", this.handleMouseMove);
+    canvas.addEventListener("mouseleave", this.handleMouseLeave);
 
     this.init().catch((err) => {
       console.error("globe scene initialization failed:", err);
@@ -188,6 +194,35 @@ export class GlobeScene {
     this.alertPolygonRenderer?.update();
   };
 
+  private handleMouseMove = (event: MouseEvent): void => {
+    const rect = this.config.canvas.getBoundingClientRect();
+    this.cursorNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.cursorNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    if (!this.globe) {
+      useGlobeStore.getState().setCursorCoordinates(null);
+      return;
+    }
+
+    this.raycaster.setFromCamera(this.cursorNdc, this.camera);
+    const intersections = this.raycaster.intersectObject(this.globe);
+
+    if (intersections.length === 0) {
+      useGlobeStore.getState().setCursorCoordinates(null);
+      return;
+    }
+
+    const localPoint = this.globe.worldToLocal(intersections[0].point.clone()).normalize();
+    const lat = Math.asin(localPoint.y) * (180 / Math.PI);
+    const lng = Math.atan2(localPoint.z, -localPoint.x) * (180 / Math.PI);
+
+    useGlobeStore.getState().setCursorCoordinates({ lat, lng });
+  };
+
+  private handleMouseLeave = (): void => {
+    useGlobeStore.getState().setCursorCoordinates(null);
+  };
+
   private handleResize = (): void => {
     const parent = this.config.canvas.parentElement;
     if (!parent) return;
@@ -205,6 +240,8 @@ export class GlobeScene {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
     }
+    this.config.canvas.removeEventListener("mousemove", this.handleMouseMove);
+    this.config.canvas.removeEventListener("mouseleave", this.handleMouseLeave);
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.markerManager?.dispose();

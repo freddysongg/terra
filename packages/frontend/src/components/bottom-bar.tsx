@@ -1,11 +1,21 @@
 import { X } from "lucide-react";
 import { useLayerStore } from "../stores/layer-store.js";
+import { useGlobeStore } from "../stores/globe-store.js";
 import { LAYER_REGISTRY } from "@terra/shared";
 import type { LayerId, LayerMetadata } from "@terra/shared";
+
+function formatCoordinates(lat: number, lng: number): string {
+  const latAbs = Math.abs(lat).toFixed(1);
+  const lngAbs = Math.abs(lng).toFixed(1);
+  const latSuffix = lat >= 0 ? "N" : "S";
+  const lngSuffix = lng >= 0 ? "E" : "W";
+  return `${latAbs}\u00B0${latSuffix}, ${lngAbs}\u00B0${lngSuffix}`;
+}
 
 export function BottomBar(): React.ReactElement {
   const activeLayers = useLayerStore((s) => s.activeLayers);
   const toggleLayer = useLayerStore((s) => s.toggleLayer);
+  const cursorCoordinates = useGlobeStore((s) => s.cursorCoordinates);
 
   const activeLayerIds = Array.from(activeLayers);
 
@@ -48,14 +58,12 @@ export function BottomBar(): React.ReactElement {
           ))}
         </div>
 
-        {hasActiveLayers && (
-          <>
-            <div className="h-3 w-px bg-terra-border" />
-            <span className="text-[10px] text-terra-text-muted tabular-nums">
-              --.----, --.----
-            </span>
-          </>
-        )}
+        {hasActiveLayers && <div className="h-3 w-px bg-terra-border" />}
+        <span className="text-[10px] text-terra-text-muted tabular-nums">
+          {cursorCoordinates
+            ? formatCoordinates(cursorCoordinates.lat, cursorCoordinates.lng)
+            : "\u2014"}
+        </span>
       </div>
     </div>
   );
