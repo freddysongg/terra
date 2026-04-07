@@ -15,7 +15,11 @@ interface AuroraResources {
   dispose: () => void;
 }
 
-function computeKpIntensity(storms: readonly { kpIndex: number }[]): number {
+interface KpSource {
+  kpIndex: number;
+}
+
+function computeKpIntensity(storms: readonly KpSource[]): number {
   if (storms.length === 0) return 0;
 
   let maxKp = 0;
