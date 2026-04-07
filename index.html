@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TERRA</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #040a16; }
+    canvas { display: block; }
+    #vignette {
+      position: fixed; inset: 0; pointer-events: none; z-index: 1;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+    }
+    #loader {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; background: #040a16;
+      z-index: 10; transition: opacity 0.8s ease;
+    }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+    #loader-text {
+      color: rgba(255,255,255,0.4); font-family: -apple-system, sans-serif;
+      font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px;
+    }
+    .bar-track { width: 200px; height: 1px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    #loader-bar { width: 0%; height: 100%; background: rgba(78,205,196,0.5); transition: width 0.3s ease; }
+  </style>
+  <script type="importmap">
+    { "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }}
+  </script>
+</head>
+<body>
+<div id="vignette"></div>
+<div id="loader">
+  <div id="loader-text">Loading</div>
+  <div class="bar-track"><div id="loader-bar"></div></div>
+</div>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+  import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+  const bar = document.getElementById('loader-bar');
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x040a16);
+
+  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(0, 0.4, 3.5);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(devicePixelRatio);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  document.body.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.minDistance = 1.8;
+  controls.maxDistance = 6.0;
+  controls.enablePan = false;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.25;
+  let rotTimer = null;
+  controls.addEventListener('start', () => { controls.autoRotate = false; clearTimeout(rotTimer); });
+  controls.addEventListener('end', () => { rotTimer = setTimeout(() => controls.autoRotate = true, 3000); });
+
+  /* ───── Stars ───── */
+  {
+    const n = 1200, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+      const dist = 40 + Math.random() * 30;
+      pos[i*3] = dist*Math.sin(ph)*Math.cos(th);
+      pos[i*3+1] = dist*Math.sin(ph)*Math.sin(th);
+      pos[i*3+2] = dist*Math.cos(ph);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+      color: 0xffffff, size: 0.05, transparent: true, opacity: 0.25, sizeAttenuation: true
+    })));
+  }
+
+  /* ───── Textures ───── */
+  const NIGHT_URLS = [
+    'https://cdn.jsdelivr.net/npm/three-globe@2.34.1/example/img/earth-night.jpg',
+    'https://cdn.jsdelivr.net/npm/three-globe@2.31.1/example/img/earth-night.jpg',
+    'https://cdn.jsdelivr.net/npm/three-globe@2.24.13/example/img/earth-night.jpg',
+    'https://unpkg.com/three-globe@2.34.1/example/img/earth-night.jpg',
+    'https://unpkg.com/three-globe@2.31.1/example/img/earth-night.jpg',
+  ];
+  const TOPO_URLS = [
+    'https://cdn.jsdelivr.net/npm/three-globe@2.34.1/example/img/earth-topology.png',
+    'https://cdn.jsdelivr.net/npm/three-globe@2.31.1/example/img/earth-topology.png',
+  ];
+
+  async function cascadeLoad(urls) {
+    const loader = new THREE.TextureLoader();
+    for (const url of urls) {
+      try { return await new Promise((res, rej) => loader.load(url, res, undefined, rej)); }
+      catch {}
+    }
+    return null;
+  }
+
+  /* ───── Contour lines — CYAN-TEAL, not gray ───── */
+  function createContourTexture() {
+    const W = 4096, H = 2048;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    function xy(lon, lat) { return [((lon+180)/360)*W, ((90-lat)/180)*H]; }
+    function curve(pts, w, a) {
+      if (pts.length < 2) return;
+      ctx.strokeStyle = `rgba(55,130,175,${a})`;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      const s = xy(pts[0][0], pts[0][1]); ctx.moveTo(s[0], s[1]);
+      for (let i = 1; i < pts.length; i++) {
+        const prev = xy(pts[i-1][0], pts[i-1][1]), curr = xy(pts[i][0], pts[i][1]);
+        ctx.quadraticCurveTo(prev[0], prev[1], (prev[0]+curr[0])/2, (prev[1]+curr[1])/2);
+      }
+      const last = xy(pts[pts.length-1][0], pts[pts.length-1][1]);
+      ctx.lineTo(last[0], last[1]); ctx.stroke();
+    }
+    function ellipse(cx, cy, rx, ry, rot, a, w) {
+      const [x, y] = xy(cx, cy);
+      ctx.strokeStyle = `rgba(55,130,175,${a})`;
+      ctx.lineWidth = w;
+      ctx.beginPath(); ctx.ellipse(x, y, rx*(W/360), ry*(H/180), rot, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // North Atlantic
+    ellipse(-35, 55, 10, 5, 0.3, 0.18, 1.8);
+    ellipse(-33, 53, 18, 9, 0.35, 0.13, 1.4);
+    ellipse(-30, 50, 28, 14, 0.4, 0.09, 1.1);
+    ellipse(-27, 47, 38, 19, 0.45, 0.06, 0.8);
+
+    // South Pacific
+    curve([[-180,-30],[-165,-26],[-148,-28],[-130,-24],[-112,-27],[-95,-23],[-80,-26]], 2.2, 0.18);
+    curve([[-178,-36],[-160,-33],[-142,-36],[-124,-32],[-106,-35],[-90,-31]], 1.8, 0.14);
+    curve([[-175,-42],[-158,-39],[-140,-42],[-122,-38],[-104,-41],[-88,-37]], 1.4, 0.10);
+    curve([[-172,-48],[-155,-45],[-138,-48],[-120,-44],[-102,-47]], 1.1, 0.07);
+
+    // South Atlantic spiral
+    for (let ring = 0; ring < 5; ring++) {
+      const r = 5+ring*4.5, alpha = 0.18-ring*0.03, pts = [];
+      for (let t = 0; t <= Math.PI*1.8; t += 0.15) {
+        const w = Math.sin(t*2.5)*1.5;
+        pts.push([-20+(r+w)*Math.cos(t+ring*0.4), -30+(r*0.5+w*0.3)*Math.sin(t+ring*0.4)]);
+      }
+      curve(pts, 1.8-ring*0.18, alpha);
+    }
+
+    // Southern Africa
+    curve([[10,-38],[20,-34],[32,-32],[44,-30],[54,-33],[62,-37],[72,-40]], 1.8, 0.16);
+    curve([[8,-44],[22,-40],[36,-38],[50,-36],[60,-40],[70,-44]], 1.4, 0.12);
+    curve([[12,-50],[28,-46],[44,-44],[58,-42],[68,-46]], 1.1, 0.08);
+
+    // Indian Ocean
+    curve([[55,-14],[68,-18],[80,-14],[92,-18],[104,-14],[116,-18]], 1.6, 0.14);
+    curve([[50,-24],[68,-20],[84,-24],[100,-20],[116,-24]], 1.3, 0.10);
+
+    // North Pacific
+    curve([[140,34],[158,38],[175,34],[192,38],[210,34]], 1.4, 0.12);
+    curve([[145,28],[162,32],[178,28],[195,32]], 1.1, 0.08);
+
+    // West Pacific spiral
+    ellipse(160, 20, 10, 5, 0.3, 0.13, 1.5);
+    ellipse(160, 20, 16, 8, 0.35, 0.09, 1.1);
+
+    // Southern Ocean
+    curve([[-180,-56],[-140,-52],[-100,-56],[-60,-52],[-20,-56],[20,-52],[60,-56],[100,-52],[140,-56],[180,-52]], 2.0, 0.16);
+    curve([[-180,-63],[-130,-59],[-80,-63],[-30,-59],[20,-63],[70,-59],[120,-63],[170,-59]], 1.6, 0.11);
+    curve([[-180,-70],[-120,-66],[-60,-70],[0,-66],[60,-70],[120,-66],[180,-70]], 1.1, 0.07);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  /* ───── Ocean color map — DARKER palette ───── */
+  function createOceanColorMap() {
+    const W = 1024, H = 512;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    const imgData = ctx.createImageData(W, H);
+    const px = imgData.data;
+
+    /* Steel gray-blue palette with visible variation between basins */
+    const pal = [
+      [7, 12, 24],        /* deepest — deep ocean */
+      [10, 17, 32],       /* deep-mid */
+      [14, 22, 40],       /* mid */
+      [18, 28, 48],       /* mid-light — warmer currents */
+      [22, 34, 55],       /* lightest — shallow/tropical */
+    ];
+
+    function lerp3(a, b, t) {
+      t = Math.max(0, Math.min(1, t));
+      return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+    }
+    function palSample(t) {
+      t = Math.max(0, Math.min(1, t));
+      const idx = t * (pal.length - 1);
+      const lo = Math.floor(idx);
+      return lerp3(pal[lo], pal[Math.min(lo+1, pal.length-1)], idx - lo);
+    }
+
+    const noiseGrid = 64;
+    const noiseArr = new Float32Array(noiseGrid * noiseGrid);
+    for (let i = 0; i < noiseArr.length; i++) noiseArr[i] = Math.random();
+    function sampleNoise(u, v) {
+      const x = ((u % 1) + 1) % 1 * noiseGrid, y = ((v % 1) + 1) % 1 * noiseGrid;
+      const ix = Math.floor(x) % noiseGrid, iy = Math.floor(y) % noiseGrid;
+      const fx = x - Math.floor(x), fy = y - Math.floor(y);
+      const sx = fx*fx*(3-2*fx), sy = fy*fy*(3-2*fy);
+      const nx = (ix+1)%noiseGrid, ny = (iy+1)%noiseGrid;
+      return noiseArr[iy*noiseGrid+ix]*(1-sx)*(1-sy) + noiseArr[iy*noiseGrid+nx]*sx*(1-sy)
+              + noiseArr[ny*noiseGrid+ix]*(1-sx)*sy + noiseArr[ny*noiseGrid+nx]*sx*sy;
+    }
+
+    function gDist(lon1, lat1, lon2, lat2) {
+      let dLon = Math.abs(lon1 - lon2);
+      if (dLon > 180) dLon = 360 - dLon;
+      return Math.sqrt(dLon * dLon + (lat1-lat2) * (lat1-lat2));
+    }
+
+    function influence(lon, lat, cLon, cLat, radius, u, v) {
+      const warpLon = lon + (sampleNoise(u*1.5+0.7, v*1.5+3.1) - 0.5) * 25;
+      const warpLat = lat + (sampleNoise(u*1.5+7.2, v*1.5+1.4) - 0.5) * 20;
+      const d = gDist(warpLon, warpLat, cLon, cLat);
+      const t = Math.max(0, 1 - d / radius);
+      return t * t * (3 - 2 * t);
+    }
+
+    for (let py = 0; py < H; py++) {
+      for (let px2 = 0; px2 < W; px2++) {
+        const u = px2/W, v = py/H;
+        const lon = u*360 - 180, lat = 90 - v*180;
+
+        // Latitude gradient: equator slightly lighter, poles darker
+        let baseT = 0.15 + (1 - Math.abs(lat)/90) * 0.30;
+
+        // Regional variation — gentle pushes toward different palette positions
+        const deepPac = influence(lon, lat, -155, -5, 100, u, v);
+        baseT += deepPac * -0.12; // darker deep pacific
+
+        const nAtl = influence(lon, lat, -40, 45, 60, u, v);
+        baseT += nAtl * 0.15; // lighter north atlantic
+
+        const carib = influence(lon, lat, -65, 18, 45, u, v);
+        baseT += carib * 0.20; // lighter caribbean/gulf
+
+        const indian = influence(lon, lat, 72, -10, 70, u, v);
+        baseT += indian * 0.10;
+
+        const sOcean = Math.max(0, (-lat - 50) / 20);
+        baseT += sOcean * -0.15; // darker southern ocean
+
+        // Noise for organic texture
+        const n1 = sampleNoise(u*3, v*3);
+        const n2 = sampleNoise(u*5+5.3, v*5+2.7);
+        baseT += (n1-0.5)*0.08 + (n2-0.5)*0.04;
+
+        const col = palSample(baseT);
+        const i = (py*W+px2)*4;
+        px[i]=col[0]; px[i+1]=col[1]; px[i+2]=col[2]; px[i+3]=255;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = true;
+    return tex;
+  }
+
+  /* ───── Globe shader — MATCHED to reference ───── */
+  const GLOBE_VERT = `
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vViewPos;
+    void main() {
+      vUv = uv;
+      vNormal = normalize(normalMatrix * normal);
+      vViewPos = (modelViewMatrix * vec4(position, 1.0)).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  const GLOBE_FRAG = `
+    uniform sampler2D uNightMap;
+    uniform sampler2D uTopoMap;
+    uniform sampler2D uOceanMap;
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vViewPos;
+
+    void main() {
+      vec4 tex = texture2D(uNightMap, vUv);
+      float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
+      float topo = texture2D(uTopoMap, vUv).r;
+
+      // ── Land/ocean threshold ──
+      float isLand = smoothstep(0.004, 0.02, topo);
+
+      // ── Ocean: very dark navy from pre-painted map ──
+      vec3 oceanColor = texture2D(uOceanMap, vUv).rgb;
+
+      // ── Land: dark navy-blue, barely lighter than ocean ──
+      // Reference shows land as very dark blue, almost same darkness as ocean
+      // distinguished mainly by coastline edges and city lights
+      // ── Land: very dark navy, barely distinguishable from ocean ──
+      vec3 landBase = vec3(0.014, 0.025, 0.060);    // deep navy
+      vec3 landMid  = vec3(0.018, 0.030, 0.072);    // slight elevation
+      vec3 landHigh = vec3(0.024, 0.038, 0.085);    // mountain — still very dark
+      float elev = smoothstep(0.02, 0.25, topo);
+      float mount = smoothstep(0.15, 0.55, topo);
+      vec3 landColor = mix(landBase, landMid, elev);
+      landColor = mix(landColor, landHigh, mount);
+
+      vec3 base = mix(landColor, oceanColor, isLand);
+
+      // ── Coastline: THIN, SUBTLE cyan edge — NOT white ──
+      // Reference shows a thin delicate cyan line at coast edges
+      float coastInner = smoothstep(0.006, 0.012, topo) * (1.0 - smoothstep(0.014, 0.020, topo));
+      float coastOuter = smoothstep(0.003, 0.007, topo) * (1.0 - smoothstep(0.016, 0.025, topo));
+      vec3 coastColor = vec3(0.25, 0.55, 0.78);  // steel-blue cyan
+      // Very subtle — barely perceptible edge highlight
+      base += coastColor * coastInner * 0.07;
+      base += coastColor * coastOuter * 0.03;
+
+      // ── City lights: warm golden-white, matching reference ──
+      // Reference shows city lights as warm golden-white dots, not orange
+      float isCity = smoothstep(0.04, 0.14, lum);
+      float cityBright = mix(0.4, 1.0, smoothstep(0.08, 0.5, lum));
+      // Golden-white: warm but not too orange
+      vec3 cityWarm = vec3(1.0, 0.82, 0.50);      // bright golden
+      vec3 cityCool = vec3(1.0, 0.90, 0.72);       // near-white warm
+      vec3 cityTint = mix(cityWarm, cityCool, smoothstep(0.1, 0.4, lum));
+      vec3 cityColor = cityTint * isCity * cityBright * 1.6;
+
+      // ── Subtle rim lighting for depth ──
+      vec3 viewDir = normalize(-vViewPos);
+      float rim = 1.0 - max(0.0, dot(viewDir, vNormal));
+      base += vec3(0.008, 0.014, 0.028) * pow(rim, 2.5);
+
+      gl_FragColor = vec4(base + cityColor, 1.0);
+    }
+  `;
+
+  function createFlatTex() {
+    const c = document.createElement('canvas');
+    c.width = 4; c.height = 4;
+    c.getContext('2d').fillRect(0,0,4,4);
+    return new THREE.CanvasTexture(c);
+  }
+
+  /* ───── Init ───── */
+  async function init() {
+    bar.style.width = '10%';
+    const [nightTex, topoTex] = await Promise.all([cascadeLoad(NIGHT_URLS), cascadeLoad(TOPO_URLS)]);
+    bar.style.width = '60%';
+
+    const maxAniso = renderer.capabilities.getMaxAnisotropy();
+    if (nightTex) {
+      nightTex.colorSpace = THREE.SRGBColorSpace;
+      nightTex.anisotropy = maxAniso;
+      nightTex.minFilter = THREE.LinearMipmapLinearFilter;
+      nightTex.magFilter = THREE.LinearFilter;
+      nightTex.generateMipmaps = true;
+    }
+    if (topoTex) {
+      topoTex.colorSpace = THREE.LinearSRGBColorSpace;
+      topoTex.anisotropy = maxAniso;
+      topoTex.minFilter = THREE.LinearMipmapLinearFilter;
+      topoTex.magFilter = THREE.LinearFilter;
+      topoTex.generateMipmaps = true;
+    }
+
+    const finalNight = nightTex || createProceduralNight();
+    bar.style.width = '75%';
+
+    const globeMat = new THREE.ShaderMaterial({
+      vertexShader: GLOBE_VERT,
+      fragmentShader: GLOBE_FRAG,
+      uniforms: {
+        uNightMap: { value: finalNight },
+        uTopoMap: { value: topoTex || createFlatTex() },
+        uOceanMap: { value: createOceanColorMap() },
+      },
+    });
+
+    const globe = new THREE.Mesh(new THREE.SphereGeometry(1, 200, 200), globeMat);
+    globe.rotation.y = -Math.PI / 2;
+    globe.rotation.x = THREE.MathUtils.degToRad(12);
+    scene.add(globe);
+
+    const contourMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(1.003, 200, 200),
+            new THREE.MeshBasicMaterial({
+              map: createContourTexture(),
+              transparent: true,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+            })
+    );
+    globe.add(contourMesh);
+
+    bar.style.width = '85%';
+
+    // ── Atmosphere — single volumetric sphere, bypasses bloom ──
+    const atmosScene = new THREE.Scene();
+    const atmosMat = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vWorldPos;
+        void main() {
+          vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+          gl_Position = projectionMatrix * viewMatrix * vec4(vWorldPos, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uCamPos;
+        uniform vec3 uColorInner;
+        uniform vec3 uColorOuter;
+        uniform float uGlobeR;
+        uniform float uAtmosR;
+        uniform float uIntensity;
+        uniform float uFalloff;
+        varying vec3 vWorldPos;
+
+        void main() {
+          vec3 rayDir = normalize(vWorldPos - uCamPos);
+          vec3 ro = uCamPos;
+
+          /* closest approach of ray to globe center (origin) */
+          float b = dot(ro, rayDir);
+          float c = dot(ro, ro);
+          float closestDist = sqrt(max(c - b * b, 0.0));
+
+          /* discard fragments where the ray hits the solid globe */
+          float disc = b * b - (c - uGlobeR * uGlobeR);
+          if (disc > 0.0 && -b - sqrt(disc) > 0.0) discard;
+
+          /* normalized distance from globe surface to atmosphere edge */
+          float edgeDist = closestDist - uGlobeR;
+          float thickness = uAtmosR - uGlobeR;
+          float t = clamp(edgeDist / thickness, 0.0, 1.0);
+
+          /* smooth exponential glow — strongest at limb, fades outward */
+          float glow = exp(-t * uFalloff) * (1.0 - t * t);
+          glow *= uIntensity;
+
+          /* brighter near globe edge, softer blue further out */
+          vec3 col = mix(uColorInner, uColorOuter, t);
+
+          gl_FragColor = vec4(col, glow);
+        }
+      `,
+      uniforms: {
+        uCamPos:     { value: camera.position },
+        uColorInner: { value: new THREE.Vector3(0.15, 0.45, 0.85) },
+        uColorOuter: { value: new THREE.Vector3(0.06, 0.18, 0.42) },
+        uGlobeR:     { value: 1.0 },
+        uAtmosR:     { value: 2.2 },
+        uIntensity:  { value: 0.56 },
+        uFalloff:    { value: 3.5 },
+      },
+      side: THREE.BackSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+    });
+    atmosScene.add(new THREE.Mesh(new THREE.SphereGeometry(2.2, 64, 64), atmosMat));
+
+    bar.style.width = '95%';
+
+    // ── Bloom — catches city lights only ──
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    composer.addPass(new UnrealBloomPass(
+            new THREE.Vector2(innerWidth, innerHeight),
+            0.55,  // strength
+            0.3,   // radius
+            0.5    // threshold
+    ));
+    composer.addPass(new OutputPass());
+
+    bar.style.width = '100%';
+    setTimeout(() => document.getElementById('loader').classList.add('hidden'), 400);
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+      composer.setSize(innerWidth, innerHeight);
+    });
+
+    (function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      composer.render();
+      renderer.autoClear = false;
+      renderer.render(atmosScene, camera);
+      renderer.autoClear = true;
+    })();
+  }
+
+  function createProceduralNight() {
+    const W = 4096, H = 2048;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#020406';
+    ctx.fillRect(0, 0, W, H);
+    [[-74,40.7],[-87.6,41.9],[-118.2,34.1],[-122.4,37.8],[-95.4,29.8],
+      [-80.2,25.8],[-77,38.9],[-99.1,19.4],[-43.2,-22.9],[-58.4,-34.6],
+      [-3.7,40.4],[2.3,48.9],[-0.1,51.5],[13.4,52.5],[12.5,41.9],
+      [37.6,55.8],[28.9,41],[55.3,25.3],[72.9,19],[77.2,28.6],
+      [100.5,13.8],[103.9,1.4],[114.2,22.3],[121.5,31.2],[116.4,39.9],
+      [126.9,37.6],[139.7,35.7],[151.2,-33.9],[3.4,6.5],[28.1,-26.2],
+    ].forEach(([lon, lat]) => {
+      const cx = ((lon+180)/360)*W, cy = ((90-lat)/180)*H;
+      for (let i = 0; i < 20+Math.floor(Math.random()*20); i++) {
+        const dx = cx+(Math.random()-0.5)*10, dy = cy+(Math.random()-0.5)*10;
+        ctx.beginPath(); ctx.arc(dx, dy, 0.3+Math.random()*1, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(255,${185+Math.floor(Math.random()*40)},${100+Math.floor(Math.random()*40)},${0.2+Math.random()*0.4})`;
+        ctx.fill();
+      }
+    });
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  init();
+</script>
+</body>
+</html>
