@@ -5,7 +5,7 @@ import { useDataStore } from "../stores/data-store.js";
 
 export function initStoreBridge(): void {
   if (import.meta.env.DEV) {
-    (window as Record<string, unknown>).__TERRA__ = {
+    (window as unknown as Record<string, unknown>).__TERRA__ = {
       events: useEventStore,
       globe: useGlobeStore,
       layers: useLayerStore,

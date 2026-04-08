@@ -54,10 +54,13 @@ export function createAurora(): AuroraResources {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.visible = false;
 
+  const kpUniform = material.uniforms.uKpIntensity!;
+  const timeUniform = material.uniforms.uTime!;
+
   function syncKpFromStore(): void {
     const storms = useDataStore.getState().spaceWeather?.geomagneticStorms ?? [];
     const intensity = computeKpIntensity(storms);
-    material.uniforms.uKpIntensity.value = intensity;
+    kpUniform.value = intensity;
 
     const isPerformance = useGlobeStore.getState().isPerformanceMode;
     mesh.visible = intensity > 0 && !isPerformance;
@@ -79,7 +82,7 @@ export function createAurora(): AuroraResources {
 
   function update(elapsed: number): void {
     if (!mesh.visible) return;
-    material.uniforms.uTime.value = elapsed;
+    timeUniform.value = elapsed;
   }
 
   function dispose(): void {
