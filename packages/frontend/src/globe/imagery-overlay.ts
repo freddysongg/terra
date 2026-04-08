@@ -41,7 +41,7 @@ export class ImageryOverlay {
   private patchGeometry: THREE.SphereGeometry | null = null;
   private patchMaterial: THREE.MeshBasicMaterial | null = null;
   private loadedTexture: THREE.Texture | null = null;
-  private textureLoader = new THREE.TextureLoader();
+  private textureLoader = new THREE.TextureLoader().setCrossOrigin("anonymous");
   private unsubscribe: () => void;
   private currentState: ImageryState | null = null;
 
