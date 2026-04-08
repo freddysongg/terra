@@ -28,11 +28,23 @@ interface TileCoords {
   y: number;
 }
 
+/**
+ * GIBS EPSG:4326 250m TileMatrixSet uses non-standard grid dimensions:
+ * zoom 0: 2×1, zoom 1: 3×2, zoom 2: 5×3, zoom 3: 10×5, zoom 4+: doubles each level.
+ */
+const GIBS_TILE_MATRIX: ReadonlyArray<{ cols: number; rows: number }> = [
+  { cols: 2, rows: 1 },
+  { cols: 3, rows: 2 },
+  { cols: 5, rows: 3 },
+  { cols: 10, rows: 5 },
+  { cols: 20, rows: 10 },
+  { cols: 40, rows: 20 },
+];
+
 function latLngToTileCoords(lat: number, lng: number, zoom: number): TileCoords {
-  const n = Math.pow(2, zoom);
-  /* EPSG:4326 has 2*2^z columns (360° longitude) but only 2^z rows (180° latitude) */
-  const x = Math.floor(((lng + 180) / 360) * n * 2);
-  const y = Math.floor(((90 - lat) / 180) * n);
+  const matrix = GIBS_TILE_MATRIX[zoom] ?? GIBS_TILE_MATRIX[GIBS_TILE_MATRIX.length - 1]!;
+  const x = Math.min(Math.floor(((lng + 180) / 360) * matrix.cols), matrix.cols - 1);
+  const y = Math.min(Math.floor(((90 - lat) / 180) * matrix.rows), matrix.rows - 1);
   return { x, y };
 }
 
