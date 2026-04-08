@@ -70,7 +70,9 @@ describe("GET /api/fires", () => {
 
   it("returns 502 when upstream fails with no cache", async () => {
     const freshApp = Fastify({ logger: false });
-    fetchSpy.mockResolvedValueOnce({ ok: false, status: 503 });
+    fetchSpy
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValueOnce({ ok: false, status: 503 });
     await registerFiresRoute(freshApp);
     await freshApp.ready();
 

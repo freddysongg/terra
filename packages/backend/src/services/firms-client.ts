@@ -2,8 +2,8 @@ import type { FireHotspot, ApiResponse } from "@terra/shared";
 import { TtlCache } from "./cache.js";
 
 const FIRMS_BASE = "https://firms.modaps.eosdis.nasa.gov/api/area/csv";
-const FIRMS_SOURCE = "VIIRS_NOAA20_NRT";
-const FIRMS_DAYS = 1;
+const FIRMS_SOURCES = ["VIIRS_NOAA20_NRT", "VIIRS_SNPP_NRT"] as const;
+const FIRMS_DAYS = 2;
 const CACHE_KEY = "firms:fires";
 
 type FetchFn = typeof globalThis.fetch;
@@ -109,18 +109,34 @@ export class FirmsClient {
     const cacheKey = `${CACHE_KEY}:${bbox}`;
 
     try {
-      const url = `${FIRMS_BASE}/${mapKey}/${FIRMS_SOURCE}/${bbox}/${FIRMS_DAYS}`;
-      const response = await this.fetchFn(url);
+      const allHotspots: FireHotspot[] = [];
+      const seenCoords = new Set<string>();
+      let anySourceSucceeded = false;
 
-      if (!response.ok) {
-        return this.fallbackOrError(`FIRMS returned ${response.status}`, cacheKey);
+      for (const source of FIRMS_SOURCES) {
+        const url = `${FIRMS_BASE}/${mapKey}/${source}/${bbox}/${FIRMS_DAYS}`;
+        const response = await this.fetchFn(url);
+
+        if (!response.ok) continue;
+
+        anySourceSucceeded = true;
+        const csv = await response.text();
+        const hotspots = parseCsv(csv);
+        for (const hotspot of hotspots) {
+          const dedupeKey = `${hotspot.latitude}:${hotspot.longitude}:${hotspot.acquisitionTimestamp}`;
+          if (!seenCoords.has(dedupeKey)) {
+            seenCoords.add(dedupeKey);
+            allHotspots.push(hotspot);
+          }
+        }
       }
 
-      const csv = await response.text();
-      const hotspots = parseCsv(csv);
-      this.cache.set(cacheKey, hotspots);
+      if (!anySourceSucceeded) {
+        return this.fallbackOrError("All FIRMS sources failed", cacheKey);
+      }
 
-      return { status: "ok", data: hotspots, cached: false };
+      this.cache.set(cacheKey, allHotspots);
+      return { status: "ok", data: allHotspots, cached: false };
     } catch (err) {
       return this.fallbackOrError(
         err instanceof Error ? err.message : "Unknown error",

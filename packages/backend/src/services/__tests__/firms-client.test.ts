@@ -9,6 +9,16 @@ const MOCK_CSV = `latitude,longitude,brightness,scan,track,acq_date,acq_time,sat
 const MOCK_CSV_LOW_CONFIDENCE = `latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,confidence,version,bright_t31,frp,daynight
 35.000,-118.000,305.0,0.39,0.36,2026-04-07,0200,N,l,2.0NRT,280.0,5.0,D`;
 
+const HEADER_ONLY_CSV = "latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,confidence,version,bright_t31,frp,daynight";
+
+function mockOkCsv(csv: string): { ok: boolean; text: () => Promise<string> } {
+  return { ok: true, text: () => Promise.resolve(csv) };
+}
+
+function mockEmptySource(): { ok: boolean; text: () => Promise<string> } {
+  return mockOkCsv(HEADER_ONLY_CSV);
+}
+
 describe("FirmsClient", () => {
   let client: FirmsClient;
   let fetchSpy: ReturnType<typeof vi.fn>;
@@ -24,10 +34,9 @@ describe("FirmsClient", () => {
   });
 
   it("parses CSV response into FireHotspot array", async () => {
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve(MOCK_CSV),
-    });
+    fetchSpy
+      .mockResolvedValueOnce(mockOkCsv(MOCK_CSV))
+      .mockResolvedValueOnce(mockEmptySource());
 
     const result = await client.getData("-125,32,-104,49");
 
@@ -47,10 +56,9 @@ describe("FirmsClient", () => {
   });
 
   it("maps confidence single-letter codes correctly", async () => {
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve(MOCK_CSV_LOW_CONFIDENCE),
-    });
+    fetchSpy
+      .mockResolvedValueOnce(mockOkCsv(MOCK_CSV_LOW_CONFIDENCE))
+      .mockResolvedValueOnce(mockEmptySource());
 
     const result = await client.getData("world");
 
@@ -59,12 +67,10 @@ describe("FirmsClient", () => {
     expect(result.data[0]!.confidence).toBe("low");
   });
 
-  it("returns empty array for CSV with only a header row", async () => {
-    const headerOnly = "latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,confidence,version,bright_t31,frp,daynight";
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve(headerOnly),
-    });
+  it("returns empty array for CSV with only header rows from all sources", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(mockEmptySource())
+      .mockResolvedValueOnce(mockEmptySource());
 
     const result = await client.getData("world");
 
@@ -78,10 +84,9 @@ describe("FirmsClient", () => {
 not-a-number,-119.456,320.5,0.39,0.36,2026-04-07,0142,N,n,2.0NRT,289.1,8.2,D
 36.789,-120.123,340.1,0.39,0.36,2026-04-07,0142,N,h,2.0NRT,295.3,12.7,D`;
 
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve(malformedCsv),
-    });
+    fetchSpy
+      .mockResolvedValueOnce(mockOkCsv(malformedCsv))
+      .mockResolvedValueOnce(mockEmptySource());
 
     const result = await client.getData("world");
 
@@ -91,14 +96,15 @@ not-a-number,-119.456,320.5,0.39,0.36,2026-04-07,0142,N,n,2.0NRT,289.1,8.2,D
     expect(result.data[0]!.longitude).toBe(-120.123);
   });
 
-  it("returns stale cache on upstream HTTP error", async () => {
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve(MOCK_CSV),
-    });
+  it("returns stale cache when all sources return HTTP errors", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(mockOkCsv(MOCK_CSV))
+      .mockResolvedValueOnce(mockEmptySource());
     await client.getData("world");
 
-    fetchSpy.mockResolvedValueOnce({ ok: false, status: 503 });
+    fetchSpy
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValueOnce({ ok: false, status: 503 });
     const result = await client.getData("world");
 
     expect(result.status).toBe("ok");
@@ -108,10 +114,9 @@ not-a-number,-119.456,320.5,0.39,0.36,2026-04-07,0142,N,n,2.0NRT,289.1,8.2,D
   });
 
   it("returns stale cache on network failure", async () => {
-    fetchSpy.mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve(MOCK_CSV),
-    });
+    fetchSpy
+      .mockResolvedValueOnce(mockOkCsv(MOCK_CSV))
+      .mockResolvedValueOnce(mockEmptySource());
     await client.getData("world");
 
     fetchSpy.mockRejectedValueOnce(new Error("network error"));
@@ -122,8 +127,10 @@ not-a-number,-119.456,320.5,0.39,0.36,2026-04-07,0142,N,n,2.0NRT,289.1,8.2,D
     expect(result.cached).toBe(true);
   });
 
-  it("returns error when upstream fails and no cache exists", async () => {
-    fetchSpy.mockRejectedValueOnce(new Error("network error"));
+  it("returns error when all sources fail and no cache exists", async () => {
+    fetchSpy
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValueOnce({ ok: false, status: 503 });
     const result = await client.getData("world");
 
     expect(result.status).toBe("error");
@@ -141,5 +148,33 @@ not-a-number,-119.456,320.5,0.39,0.36,2026-04-07,0142,N,n,2.0NRT,289.1,8.2,D
     expect(result.status).toBe("error");
     if (result.status !== "error") return;
     expect(result.source).toBe("firms");
+  });
+
+  it("merges results from multiple sources and deduplicates", async () => {
+    const csv2 = `latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,confidence,version,bright_t31,frp,daynight
+37.123,-119.456,320.5,0.39,0.36,2026-04-07,0142,N,n,2.0NRT,289.1,8.2,D
+38.000,-121.000,310.0,0.39,0.36,2026-04-07,0300,N,n,2.0NRT,285.0,6.0,D`;
+
+    fetchSpy
+      .mockResolvedValueOnce(mockOkCsv(MOCK_CSV))
+      .mockResolvedValueOnce(mockOkCsv(csv2));
+
+    const result = await client.getData("world");
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.data).toHaveLength(3);
+  });
+
+  it("uses second source when first source fails", async () => {
+    fetchSpy
+      .mockResolvedValueOnce({ ok: false, status: 429 })
+      .mockResolvedValueOnce(mockOkCsv(MOCK_CSV));
+
+    const result = await client.getData("world");
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.data).toHaveLength(2);
   });
 });
