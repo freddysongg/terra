@@ -207,6 +207,23 @@ describe("DonkiClient", () => {
     expect(result.data.coronalMassEjections).toHaveLength(1);
   });
 
+  it("returns empty summary when endpoints return no data and one fails", async () => {
+    const fetchSpy = makeMockFetch([
+      { ok: true, body: [] },
+      { ok: true, body: [] },
+      { ok: false, body: null },
+    ]);
+    const client = new DonkiClient(new TtlCache(60_000), fetchSpy);
+
+    const result = await client.getData();
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.data.solarFlares).toHaveLength(0);
+    expect(result.data.geomagneticStorms).toHaveLength(0);
+    expect(result.data.coronalMassEjections).toHaveLength(0);
+  });
+
   it("falls back to stale cache when all three endpoints fail", async () => {
     const ttlCache = new TtlCache<import("@terra/shared").SpaceWeatherSummary>(60_000);
 

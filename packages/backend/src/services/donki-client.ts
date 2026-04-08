@@ -107,17 +107,15 @@ export class DonkiClient {
         resolveSettledJson<RawCoronalMassEjection>(cmeResult),
       ]);
 
-      const allEmpty =
-        rawFlares.length === 0 &&
-        rawStorms.length === 0 &&
-        rawCmes.length === 0;
+      const endpointFailed = (r: PromiseSettledResult<Response>): boolean =>
+        r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok);
 
-      const anyFailed =
-        flrResult.status === "rejected" || (flrResult.status === "fulfilled" && !flrResult.value.ok) ||
-        gstResult.status === "rejected" || (gstResult.status === "fulfilled" && !gstResult.value.ok) ||
-        cmeResult.status === "rejected" || (cmeResult.status === "fulfilled" && !cmeResult.value.ok);
+      const allFailed =
+        endpointFailed(flrResult) &&
+        endpointFailed(gstResult) &&
+        endpointFailed(cmeResult);
 
-      if (allEmpty && anyFailed) {
+      if (allFailed) {
         return this.fallbackOrError("All DONKI endpoints failed");
       }
 
