@@ -8,7 +8,7 @@ import type { NaturalEvent, EventCategoryId } from "@terra/shared";
 import type { ClusterInput, Cluster } from "./clustering.js";
 
 const MARKER_RADIUS = 1.01;
-const BACK_FACE_THRESHOLD = 0;
+const BACK_FACE_THRESHOLD = 0.05;
 const MARKER_SIZE = 16;
 const DOT_SIZE = 16;
 const ICON_SIZE = 10;
@@ -450,7 +450,7 @@ export class MarkerManager {
     const parent = this.canvas.parentElement;
     const width = parent?.clientWidth ?? this.canvas.clientWidth;
     const height = parent?.clientHeight ?? this.canvas.clientHeight;
-    const cameraDirection = this.camera.position.clone().normalize().negate();
+    const cameraDirection = this.camera.position.clone().normalize();
 
     const visibleInputs: ClusterInput[] = [];
 
@@ -518,7 +518,7 @@ export class MarkerManager {
   }
 
   update(): void {
-    const cameraDirection = this.camera.position.clone().normalize().negate();
+    const cameraDirection = this.camera.position.clone().normalize();
 
     this.updateClusters();
 
@@ -533,10 +533,12 @@ export class MarkerManager {
       const isBackFacing = dotProduct < BACK_FACE_THRESHOLD;
       const isClustered = this.clusteredMarkerIds.has(entry.eventId);
 
+      const isHidden = isBackFacing || isClustered;
       if (!this.fadingOutIds.has(entry.eventId)) {
-        entry.element.style.opacity = (isBackFacing || isClustered) ? "0" : "1";
+        entry.element.style.opacity = isHidden ? "0" : "1";
+        entry.element.style.visibility = isHidden ? "hidden" : "visible";
       }
-      entry.element.style.pointerEvents = (isBackFacing || isClustered) ? "none" : "auto";
+      entry.element.style.pointerEvents = isHidden ? "none" : "auto";
     }
 
     this.updateSelectedScreenPosition();
