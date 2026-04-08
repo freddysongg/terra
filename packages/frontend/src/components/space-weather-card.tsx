@@ -14,12 +14,12 @@ function resolveFlareClassDisplay(classType: string): FlareClassDisplay {
   const prefix = classType[0]?.toUpperCase() ?? "";
 
   if (prefix === "X") {
-    return { classLabel: "Solar storm", badgeClass: "border-terra-border rounded-full px-2 py-0.5 text-[10px] text-terra-text-secondary" };
+    return { classLabel: "Solar storm", badgeClass: "border-terra-border text-terra-text-secondary" };
   }
   if (prefix === "M") {
-    return { classLabel: "Active", badgeClass: "border-terra-border rounded-full px-2 py-0.5 text-[10px] text-terra-text-secondary" };
+    return { classLabel: "Active", badgeClass: "border-terra-border text-terra-text-secondary" };
   }
-  return { classLabel: "Quiet", badgeClass: "border-terra-border rounded-full px-2 py-0.5 text-[10px] text-terra-text-secondary" };
+  return { classLabel: "Quiet", badgeClass: "border-terra-border text-terra-text-secondary" };
 }
 
 function formatRelativeTime(isoTime: string): string {

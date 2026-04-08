@@ -183,8 +183,7 @@ export function EventPopup(): React.ReactElement | null {
       }}
     >
       <div
-        className="relative overflow-hidden w-[280px] rounded-lg panel-surface shadow-xl p-3"
-        style={{ animation: "popup-in 0.2s ease-out both" }}
+        className="relative overflow-hidden w-[280px] rounded-lg panel-surface shadow-xl p-3 animate-[popup-in_0.2s_ease-out_both]"
       >
         <div
           className="absolute top-0 left-0 w-[140px] h-px z-[1]"
