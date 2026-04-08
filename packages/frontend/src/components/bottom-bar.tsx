@@ -36,13 +36,13 @@ export function BottomBar(): React.ReactElement {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20">
-      <div className="flex items-center gap-3 rounded-full border border-terra-border bg-terra-surface/80 backdrop-blur-md px-4 py-1.5 shadow-lg">
+      <div className="flex items-center gap-3 rounded-full panel-surface px-4 py-1.5 shadow-lg">
         <div className="flex items-center gap-1.5 flex-wrap">
           {!hasActiveLayers && (
             <span className="text-[10px] text-terra-text-muted">No active layers</span>
           )}
           {activeCategoryCount > 0 && (
-            <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-terra-text">
+            <span className="rounded-full bg-white/6 px-2 py-0.5 text-[11px] text-terra-text-secondary">
               Events ({activeCategoryCount})
             </span>
           )}
@@ -50,16 +50,16 @@ export function BottomBar(): React.ReactElement {
             <button
               key={entry.id}
               onClick={() => toggleLayer(entry.id as LayerId)}
-              className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-terra-text hover:bg-white/10 transition-colors"
+              className="flex items-center gap-1 rounded-full bg-white/6 px-2 py-0.5 text-[11px] text-terra-text-secondary hover:bg-white/10 transition-colors"
             >
               {entry.label}
-              <X className="h-2.5 w-2.5 text-terra-text-muted" />
+              <X className="h-2.5 w-2.5 text-terra-text-faint" />
             </button>
           ))}
         </div>
 
         {hasActiveLayers && <div className="h-3 w-px bg-terra-border" />}
-        <span className="text-[10px] text-terra-text-muted tabular-nums">
+        <span className="text-[11px] text-terra-text-muted tabular-nums">
           {cursorCoordinates
             ? formatCoordinates(cursorCoordinates.lat, cursorCoordinates.lng)
             : "\u2014"}

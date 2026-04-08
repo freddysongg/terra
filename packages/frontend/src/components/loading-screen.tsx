@@ -10,14 +10,19 @@ export function LoadingScreen(): React.ReactElement {
         isLoaded ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
-      <div className="mb-4 text-[13px] tracking-[2px] uppercase text-white/40 font-[-apple-system,sans-serif]">
-        Loading
+      <div
+        className="mb-4 text-[11px] font-semibold tracking-[4px] uppercase text-terra-text-faint animate-[load-pulse_2s_ease-in-out_infinite]"
+      >
+        TERRA
       </div>
-      <div className="w-[200px] h-px bg-white/[0.08] overflow-hidden">
+      <div className="w-[200px] h-0.5 bg-terra-azure/15 rounded-full overflow-hidden">
         <div
-          className="h-full bg-terra-cyan/50 transition-[width] duration-300 ease-out"
+          className="h-full bg-terra-azure/60 rounded-full transition-[width] duration-300 ease-out"
           style={{ width: `${loadProgress}%` }}
         />
+      </div>
+      <div className="mt-2.5 text-[10px] text-terra-text-faint tracking-[1px] tabular-nums">
+        {Math.round(loadProgress)}%
       </div>
     </div>
   );

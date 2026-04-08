@@ -68,8 +68,8 @@ function EventListItem({ event, isSelected, onSelect }: EventListItemProps): Rea
     <button
       onClick={() => onSelect(event.id)}
       className={cn(
-        "w-full text-left rounded-md px-2.5 py-2 transition-colors hover:bg-white/5",
-        isSelected && "bg-white/10 ring-1 ring-terra-cyan/30",
+        "relative w-full text-left rounded-md px-2.5 py-2 transition-colors hover:bg-white/4",
+        isSelected && "bg-white/4",
       )}
     >
       <div className="flex items-start gap-2">
@@ -102,6 +102,9 @@ function EventListItem({ event, isSelected, onSelect }: EventListItemProps): Rea
           )}
         </div>
       </div>
+      {isSelected && (
+        <div className="absolute bottom-0 left-2 right-2 h-px bg-gradient-to-r from-terra-azure via-terra-azure/15 to-transparent" />
+      )}
     </button>
   );
 }
@@ -165,7 +168,7 @@ export function EventFeed(): React.ReactElement {
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 rounded-lg border border-terra-border bg-terra-surface/80 backdrop-blur-md"
+          className="h-10 w-10 rounded-lg panel-surface"
           onClick={() => setIsExpanded(true)}
         >
           <Activity className="h-4 w-4 text-terra-text-muted" />
@@ -173,11 +176,11 @@ export function EventFeed(): React.ReactElement {
       )}
 
       {isExpanded && (
-        <div className="rounded-lg border border-terra-border bg-terra-surface/80 backdrop-blur-md shadow-lg">
+        <div className="relative overflow-hidden rounded-lg panel-surface accent-line edge-shimmer shadow-lg">
           <div className="flex items-center justify-between px-3 py-2 border-b border-terra-border">
             <div className="flex items-center gap-2">
               <Activity className="h-3.5 w-3.5 text-terra-text-muted" />
-              <span className="text-xs font-medium text-terra-text">Events</span>
+              <span className="text-xs font-medium text-terra-text tracking-[0.5px]">Events</span>
             </div>
             <Button
               variant="ghost"

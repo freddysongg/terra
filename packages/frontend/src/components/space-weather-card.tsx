@@ -5,21 +5,14 @@ import type { SpaceWeatherSummary, SolarFlare, CoronalMassEjection } from "@terr
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card.js";
 import { Badge } from "./ui/badge.js";
 
-interface FlareClassDisplay {
-  classLabel: string;
-  badgeClass: string;
-}
+const FLARE_BADGE_CLASS = "border-terra-border text-terra-text-secondary";
 
-function resolveFlareClassDisplay(classType: string): FlareClassDisplay {
+function resolveFlareClassLabel(classType: string): string {
   const prefix = classType[0]?.toUpperCase() ?? "";
 
-  if (prefix === "X") {
-    return { classLabel: "Solar storm", badgeClass: "border-red-500 text-red-400" };
-  }
-  if (prefix === "M") {
-    return { classLabel: "Active", badgeClass: "border-yellow-500 text-yellow-400" };
-  }
-  return { classLabel: "Quiet", badgeClass: "border-green-500 text-green-400" };
+  if (prefix === "X") return "Solar storm";
+  if (prefix === "M") return "Active";
+  return "Quiet";
 }
 
 function formatRelativeTime(isoTime: string): string {
@@ -81,37 +74,37 @@ interface SpaceWeatherBodyProps {
 function SpaceWeatherBody({ summary }: SpaceWeatherBodyProps): React.ReactElement {
   const latestFlare = resolveLatestFlare(summary.solarFlares);
   const cmeStatus = resolveCmeStatus(summary.coronalMassEjections);
-  const flareDisplay = latestFlare !== null ? resolveFlareClassDisplay(latestFlare.classType) : null;
+  const flareClassLabel = latestFlare !== null ? resolveFlareClassLabel(latestFlare.classType) : null;
 
   return (
-    <div className="space-y-2 text-xs">
+    <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-terra-text-muted">Solar Activity</span>
-        {latestFlare !== null && flareDisplay !== null ? (
+        <span className="text-terra-text-muted text-[13px]">Solar Activity</span>
+        {latestFlare !== null && flareClassLabel !== null ? (
           <div className="flex items-center gap-1.5">
             <Badge
               variant="outline"
-              className={`text-[10px] px-1.5 py-0 ${flareDisplay.badgeClass}`}
+              className={`text-[10px] px-1.5 py-0 ${FLARE_BADGE_CLASS}`}
             >
               {latestFlare.classType}
             </Badge>
-            <span className="text-terra-text">{flareDisplay.classLabel}</span>
+            <span className="text-terra-text text-[13px]">{flareClassLabel}</span>
           </div>
         ) : (
-          <span className="text-terra-text">None detected</span>
+          <span className="text-terra-azure text-[13px]">None detected</span>
         )}
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <span className="text-terra-text-muted">Last flare</span>
-        <span className="text-terra-text">
+        <span className="text-terra-text-muted text-[13px]">Last flare</span>
+        <span className="text-terra-text text-[13px]">
           {latestFlare !== null ? formatRelativeTime(latestFlare.beginTime) : "—"}
         </span>
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <span className="text-terra-text-muted">CME Status</span>
-        <span className="text-terra-text text-right">{cmeStatus}</span>
+        <span className="text-terra-text-muted text-[13px]">CME Status</span>
+        <span className="text-terra-text text-[13px] text-right">{cmeStatus}</span>
       </div>
     </div>
   );
@@ -127,9 +120,9 @@ export function SpaceWeatherCard(): React.ReactElement | null {
 
   return (
     <div className="fixed right-4 bottom-16 z-20">
-      <Card className="w-[260px] bg-terra-surface/80 backdrop-blur-md border-terra-border shadow-lg">
-        <CardHeader className="px-3 py-2 pb-2 border-b border-terra-border">
-          <CardTitle className="flex items-center gap-2 text-xs font-medium text-terra-text">
+      <Card className="w-[260px] accent-line edge-shimmer shadow-lg">
+        <CardHeader className="px-3 py-2 pb-2 border-b border-terra-border/50">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium text-terra-text tracking-[0.5px]">
             <Sun className="h-3.5 w-3.5 text-terra-text-muted" />
             Space Weather
           </CardTitle>

@@ -108,7 +108,7 @@ export function TopBar(): React.ReactElement {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-20 w-[40vw] min-w-[300px] max-w-[600px]">
-        <div className="flex items-center gap-2 rounded-full border border-terra-border bg-terra-surface/80 backdrop-blur-md px-3 py-1.5 shadow-lg">
+        <div className="flex items-center gap-2 rounded-full panel-surface px-3 py-1.5 shadow-lg">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-terra-text-muted" />
             <Input
@@ -119,7 +119,7 @@ export function TopBar(): React.ReactElement {
               className="h-7 w-[180px] rounded-full border-none bg-transparent pl-8 pr-3 text-xs text-terra-text placeholder:text-terra-text-muted focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {searchQuery.trim() && hasDropdownResults && (
-              <div className="absolute left-0 top-full mt-1 w-[260px] rounded-lg border border-terra-border bg-terra-surface/95 backdrop-blur-md shadow-xl overflow-hidden z-50">
+              <div className="absolute left-0 top-full mt-1 w-[260px] rounded-lg panel-surface shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden z-50">
                 <ScrollArea className="max-h-[240px]">
                   <div className="p-1">
                     {matchingRegions.length > 0 && (
@@ -131,7 +131,7 @@ export function TopBar(): React.ReactElement {
                           <button
                             key={region.name}
                             onClick={() => handleRegionSelect(region)}
-                            className="flex items-center gap-2 w-full rounded-md px-2.5 py-1.5 text-left hover:bg-white/5 transition-colors"
+                            className="flex items-center gap-2 w-full rounded-md px-2.5 py-1.5 text-left hover:bg-white/4 transition-colors"
                           >
                             <Globe className="h-3 w-3 shrink-0 text-terra-text-muted" />
                             <span className="text-xs text-terra-text truncate">
@@ -150,7 +150,7 @@ export function TopBar(): React.ReactElement {
                           <button
                             key={event.id}
                             onClick={() => handleDropdownSelect(event.id)}
-                            className="flex items-center gap-2 w-full rounded-md px-2.5 py-1.5 text-left hover:bg-white/5 transition-colors"
+                            className="flex items-center gap-2 w-full rounded-md px-2.5 py-1.5 text-left hover:bg-white/4 transition-colors"
                           >
                             <div
                               className="h-2 w-2 shrink-0 rounded-full"
@@ -174,7 +174,7 @@ export function TopBar(): React.ReactElement {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1.5 px-2">
-                <div className="h-2 w-2 rounded-full bg-terra-cyan animate-pulse" />
+                <div className="h-2 w-2 rounded-full bg-terra-azure animate-pulse" />
                 <span className="text-xs text-terra-text-muted tabular-nums">
                   {activeEventCount}
                 </span>
@@ -218,7 +218,7 @@ export function TopBar(): React.ReactElement {
             </Tooltip>
 
             {isSettingsOpen && (
-              <div className="absolute right-0 top-full mt-2 w-[200px] rounded-lg border border-terra-border bg-terra-surface/90 backdrop-blur-md shadow-xl p-3">
+              <div className="absolute right-0 top-full mt-2 w-[200px] rounded-lg panel-surface shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-terra-text">Performance mode</span>
                   <Switch

@@ -21,7 +21,7 @@ function LayerGroup({ title, layers, eventCountsByCategory }: LayerGroupProps): 
 
   return (
     <div className="mb-4">
-      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-terra-text-muted mb-2 px-1">
+      <h3 className="text-[10px] font-semibold uppercase tracking-[3px] text-terra-text-faint mb-2 px-1">
         {title}
       </h3>
       <div className="space-y-0.5">
@@ -39,7 +39,7 @@ function LayerGroup({ title, layers, eventCountsByCategory }: LayerGroupProps): 
               key={layer.id}
               onClick={() => toggleLayer(layer.id)}
               className={cn(
-                "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-white/5",
+                "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-white/4",
                 isActive ? "text-terra-text" : "text-terra-text-muted",
               )}
             >
@@ -128,7 +128,7 @@ export function LayerPanel(): React.ReactElement {
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 rounded-lg border border-terra-border bg-terra-surface/80 backdrop-blur-md"
+          className="h-10 w-10 rounded-lg panel-surface"
           onClick={() => setIsExpanded(true)}
         >
           <Layers className="h-4 w-4 text-terra-text-muted" />
@@ -136,7 +136,7 @@ export function LayerPanel(): React.ReactElement {
       )}
 
       {isExpanded && (
-        <div className="rounded-lg border border-terra-border bg-terra-surface/80 backdrop-blur-md shadow-lg">
+        <div className="relative overflow-hidden rounded-lg panel-surface accent-line edge-shimmer shadow-lg">
           <div className="flex items-center justify-between px-3 py-2 border-b border-terra-border">
             <div className="flex items-center gap-2">
               <Layers className="h-3.5 w-3.5 text-terra-text-muted" />
