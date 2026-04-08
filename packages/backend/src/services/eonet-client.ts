@@ -36,7 +36,7 @@ function transformEvent(raw: RawEonetEvent): NaturalEvent {
       timestamp: g.date,
     })),
     magnitude:
-      raw.magnitudeValue !== null && raw.magnitudeUnit !== null
+      raw.magnitudeValue != null && raw.magnitudeUnit != null
         ? { id: raw.magnitudeUnit, value: raw.magnitudeValue, unit: raw.magnitudeUnit }
         : null,
     sourceUrl: source?.url ?? "",

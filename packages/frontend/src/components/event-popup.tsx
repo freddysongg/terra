@@ -52,6 +52,7 @@ function formatDate(dateString: string): string {
 
 function formatMagnitude(event: NaturalEvent): string | null {
   if (!event.magnitude) return null;
+  if (event.magnitude.value == null || event.magnitude.unit == null) return null;
   return `${event.magnitude.value} ${event.magnitude.unit}`;
 }
 
