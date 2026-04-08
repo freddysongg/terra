@@ -192,6 +192,8 @@ function createMarkerElement(event: NaturalEvent): HTMLDivElement {
 
   const container = document.createElement("div");
   container.className = "terra-marker";
+  container.dataset.eventId = event.id;
+  container.dataset.category = event.category;
   container.style.cssText = `
     pointer-events: auto;
     cursor: pointer;

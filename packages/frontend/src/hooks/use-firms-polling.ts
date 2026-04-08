@@ -4,9 +4,11 @@ import { useDataStore } from "../stores/data-store.js";
 import type { ApiResponse, FireHotspot } from "@terra/shared";
 
 const POLL_INTERVAL_MS = 30 * 60 * 1000;
+const RETRY_INTERVAL_MS = 60 * 1000;
 const MAX_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 1000;
 const LAYER_ID = "fireDensity" as const;
+const DISABLED_REASON = "FIRMS fire data unavailable";
 
 async function fetchFires(signal: AbortSignal): Promise<readonly FireHotspot[]> {
   const response = await fetch("/api/fires", { signal });
@@ -46,6 +48,15 @@ export function useFirmsPolling(): void {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    const retryTimerRef: { current: ReturnType<typeof setInterval> | null } = { current: null };
+
+    function clearRetryTimer(): void {
+      if (retryTimerRef.current !== null) {
+        clearInterval(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    }
+
     function stopPolling(): void {
       if (abortControllerRef.current !== null) {
         abortControllerRef.current.abort();
@@ -56,6 +67,25 @@ export function useFirmsPolling(): void {
         intervalRef.current = null;
       }
       useDataStore.getState().setFireHotspots([]);
+    }
+
+    function startRetryLoop(): void {
+      clearRetryTimer();
+      const retryAbort = new AbortController();
+      abortControllerRef.current = retryAbort;
+
+      retryTimerRef.current = setInterval(async () => {
+        try {
+          const hotspots = await fetchWithRetry(retryAbort.signal);
+          if (!retryAbort.signal.aborted) {
+            useDataStore.getState().setFireHotspots(hotspots);
+            clearRetryTimer();
+            useLayerStore.getState().enableLayer(LAYER_ID);
+          }
+        } catch {
+          /* retry on next interval */
+        }
+      }, RETRY_INTERVAL_MS);
     }
 
     function startPolling(): void {
@@ -75,7 +105,8 @@ export function useFirmsPolling(): void {
           if (!abortController.signal.aborted) {
             console.error("firms polling failed:", err);
             useDataStore.getState().setLoadingFires(false);
-            useLayerStore.getState().toggleLayer(LAYER_ID);
+            useLayerStore.getState().disableLayer(LAYER_ID, DISABLED_REASON);
+            startRetryLoop();
           }
         }
       }
@@ -93,6 +124,7 @@ export function useFirmsPolling(): void {
       const isNowActive = state.activeLayers.has(LAYER_ID);
 
       if (!wasActive && isNowActive) {
+        clearRetryTimer();
         startPolling();
       } else if (wasActive && !isNowActive) {
         stopPolling();
@@ -101,6 +133,7 @@ export function useFirmsPolling(): void {
 
     return () => {
       unsubscribe();
+      clearRetryTimer();
       if (abortControllerRef.current !== null) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;

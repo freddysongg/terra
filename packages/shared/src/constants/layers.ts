@@ -1,4 +1,21 @@
+import type { EventCategoryId } from "../types/events.js";
 import type { LayerMetadata, LayerId } from "../types/layers.js";
+
+export const EVENT_CATEGORY_IDS: readonly EventCategoryId[] = [
+  "drought",
+  "dustHaze",
+  "earthquakes",
+  "floods",
+  "landslides",
+  "manmade",
+  "seaLakeIce",
+  "severeStorms",
+  "snow",
+  "tempExtremes",
+  "volcanoes",
+  "waterColor",
+  "wildfires",
+];
 
 export const LAYER_REGISTRY: Record<LayerId, LayerMetadata> = {
   drought: { id: "drought", label: "Drought", group: "category" },

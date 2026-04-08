@@ -13,4 +13,4 @@ export type {
   SolarFlare, GeomagneticStorm, CoronalMassEjection, SpaceWeatherSummary,
 } from "./types/space-weather.js";
 export { CATEGORY_META } from "./constants/categories.js";
-export { LAYER_REGISTRY } from "./constants/layers.js";
+export { EVENT_CATEGORY_IDS, LAYER_REGISTRY } from "./constants/layers.js";

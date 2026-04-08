@@ -15,7 +15,6 @@ import { Switch } from "./ui/switch.js";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip.js";
 
@@ -101,8 +100,7 @@ export function TopBar(): React.ReactElement {
   }, [setSearchQuery]);
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-20 w-[40vw] min-w-[300px] max-w-[600px]">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-20 w-[40vw] min-w-[300px] max-w-[600px]">
         <div className="flex items-center gap-2 rounded-full panel-surface px-3 py-1.5 shadow-lg">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-terra-text-muted" />
@@ -226,6 +224,5 @@ export function TopBar(): React.ReactElement {
           </div>
         </div>
       </div>
-    </TooltipProvider>
   );
 }
