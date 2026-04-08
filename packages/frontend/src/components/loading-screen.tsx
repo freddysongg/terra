@@ -11,8 +11,7 @@ export function LoadingScreen(): React.ReactElement {
       }`}
     >
       <div
-        className="mb-4 text-[11px] font-semibold tracking-[4px] uppercase text-terra-text-faint"
-        style={{ animation: "load-pulse 2s ease-in-out infinite" }}
+        className="mb-4 text-[11px] font-semibold tracking-[4px] uppercase text-terra-text-faint animate-[load-pulse_2s_ease-in-out_infinite]"
       >
         TERRA
       </div>

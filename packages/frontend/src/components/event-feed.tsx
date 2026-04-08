@@ -180,7 +180,7 @@ export function EventFeed(): React.ReactElement {
           <div className="flex items-center justify-between px-3 py-2 border-b border-terra-border">
             <div className="flex items-center gap-2">
               <Activity className="h-3.5 w-3.5 text-terra-text-muted" />
-              <span className="text-xs font-medium text-terra-text">Events</span>
+              <span className="text-xs font-medium text-terra-text tracking-[0.5px]">Events</span>
             </div>
             <Button
               variant="ghost"
