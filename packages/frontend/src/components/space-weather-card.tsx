@@ -5,21 +5,14 @@ import type { SpaceWeatherSummary, SolarFlare, CoronalMassEjection } from "@terr
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card.js";
 import { Badge } from "./ui/badge.js";
 
-interface FlareClassDisplay {
-  classLabel: string;
-  badgeClass: string;
-}
+const FLARE_BADGE_CLASS = "border-terra-border text-terra-text-secondary";
 
-function resolveFlareClassDisplay(classType: string): FlareClassDisplay {
+function resolveFlareClassLabel(classType: string): string {
   const prefix = classType[0]?.toUpperCase() ?? "";
 
-  if (prefix === "X") {
-    return { classLabel: "Solar storm", badgeClass: "border-terra-border text-terra-text-secondary" };
-  }
-  if (prefix === "M") {
-    return { classLabel: "Active", badgeClass: "border-terra-border text-terra-text-secondary" };
-  }
-  return { classLabel: "Quiet", badgeClass: "border-terra-border text-terra-text-secondary" };
+  if (prefix === "X") return "Solar storm";
+  if (prefix === "M") return "Active";
+  return "Quiet";
 }
 
 function formatRelativeTime(isoTime: string): string {
@@ -81,21 +74,21 @@ interface SpaceWeatherBodyProps {
 function SpaceWeatherBody({ summary }: SpaceWeatherBodyProps): React.ReactElement {
   const latestFlare = resolveLatestFlare(summary.solarFlares);
   const cmeStatus = resolveCmeStatus(summary.coronalMassEjections);
-  const flareDisplay = latestFlare !== null ? resolveFlareClassDisplay(latestFlare.classType) : null;
+  const flareClassLabel = latestFlare !== null ? resolveFlareClassLabel(latestFlare.classType) : null;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-terra-text-muted text-[13px]">Solar Activity</span>
-        {latestFlare !== null && flareDisplay !== null ? (
+        {latestFlare !== null && flareClassLabel !== null ? (
           <div className="flex items-center gap-1.5">
             <Badge
               variant="outline"
-              className={`text-[10px] px-1.5 py-0 ${flareDisplay.badgeClass}`}
+              className={`text-[10px] px-1.5 py-0 ${FLARE_BADGE_CLASS}`}
             >
               {latestFlare.classType}
             </Badge>
-            <span className="text-terra-text text-[13px]">{flareDisplay.classLabel}</span>
+            <span className="text-terra-text text-[13px]">{flareClassLabel}</span>
           </div>
         ) : (
           <span className="text-terra-azure text-[13px]">None detected</span>
@@ -127,7 +120,7 @@ export function SpaceWeatherCard(): React.ReactElement | null {
 
   return (
     <div className="fixed right-4 bottom-16 z-20">
-      <Card className="w-[260px] panel-surface accent-line edge-shimmer relative overflow-hidden shadow-lg">
+      <Card className="w-[260px] accent-line edge-shimmer shadow-lg">
         <CardHeader className="px-3 py-2 pb-2 border-b border-terra-border/50">
           <CardTitle className="flex items-center gap-2 text-sm font-medium text-terra-text tracking-[0.5px]">
             <Sun className="h-3.5 w-3.5 text-terra-text-muted" />

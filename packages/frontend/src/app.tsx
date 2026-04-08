@@ -40,20 +40,20 @@ export function App(): React.ReactElement {
         <LoadingScreen />
         {isLoaded && (
           <>
-            <div style={{ animation: "fade-slide-down 0.4s ease-out both" }}>
+            <div className="animate-[fade-slide-down_0.4s_ease-out_both]">
               <TopBar />
             </div>
-            <div style={{ animation: "fade-slide-right 0.4s ease-out 0.1s both" }}>
+            <div className="animate-[fade-slide-right_0.4s_ease-out_0.1s_both]">
               <EventFeed />
             </div>
-            <div style={{ animation: "fade-slide-left 0.4s ease-out 0.2s both" }}>
+            <div className="animate-[fade-slide-left_0.4s_ease-out_0.2s_both]">
               <LayerPanel />
             </div>
-            <div style={{ animation: "fade-slide-left 0.4s ease-out 0.4s both" }}>
+            <div className="animate-[fade-slide-left_0.4s_ease-out_0.4s_both]">
               <SpaceWeatherCard />
             </div>
             <EventPopup />
-            <div style={{ animation: "fade-slide-up 0.4s ease-out 0.3s both" }}>
+            <div className="animate-[fade-slide-up_0.4s_ease-out_0.3s_both]">
               <BottomBar />
             </div>
           </>

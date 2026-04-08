@@ -113,17 +113,6 @@
     z-index: 1;
   }
 
-  .accent-line-magma::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 140px;
-    height: 1px;
-    background: linear-gradient(90deg, #c44b2f 0%, rgba(196, 75, 47, 0.3) 50%, transparent 100%);
-    z-index: 1;
-  }
-
   .edge-shimmer::after {
     content: '';
     position: absolute;
