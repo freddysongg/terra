@@ -35,11 +35,14 @@ function LayerGroup({ title, layers, eventCountsByCategory }: LayerGroupProps): 
             : undefined;
 
           return (
-            <button
+            <div
               key={layer.id}
+              role="button"
+              tabIndex={0}
               onClick={() => toggleLayer(layer.id)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggleLayer(layer.id); }}
               className={cn(
-                "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-white/4",
+                "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-white/4 cursor-pointer",
                 isActive ? "text-terra-text" : "text-terra-text-muted",
               )}
             >
@@ -66,7 +69,7 @@ function LayerGroup({ title, layers, eventCountsByCategory }: LayerGroupProps): 
                 className="scale-75 origin-right"
                 onClick={(e) => e.stopPropagation()}
               />
-            </button>
+            </div>
           );
         })}
       </div>
