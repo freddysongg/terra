@@ -182,7 +182,16 @@ export function EventPopup(): React.ReactElement | null {
         transform,
       }}
     >
-      <div className="relative w-[280px] rounded-lg border border-terra-border bg-terra-surface/90 backdrop-blur-md shadow-xl p-3">
+      <div
+        className="relative overflow-hidden w-[280px] rounded-lg panel-surface shadow-xl p-3"
+        style={{ animation: "popup-in 0.2s ease-out both" }}
+      >
+        <div
+          className="absolute top-0 left-0 w-[140px] h-px z-[1]"
+          style={{
+            background: `linear-gradient(90deg, ${categoryMeta.color} 0%, ${categoryMeta.color}4D 50%, transparent 100%)`,
+          }}
+        />
         <ConnectorLine placement={placement} categoryColor={categoryMeta.color} />
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="text-sm font-medium text-terra-text leading-tight">
@@ -191,7 +200,7 @@ export function EventPopup(): React.ReactElement | null {
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0"
+            className="h-7 w-7 rounded-full shrink-0"
             onClick={clearSelection}
           >
             <X className="h-3.5 w-3.5" />
@@ -208,22 +217,22 @@ export function EventPopup(): React.ReactElement | null {
             {categoryMeta.label}
           </Badge>
           <Badge
-            variant={selectedEvent.status === "open" ? "default" : "secondary"}
-            className="text-[10px] px-1.5 py-0"
+            variant={selectedEvent.status === "open" ? "outline" : "secondary"}
+            className={selectedEvent.status === "open" ? "text-[10px] px-1.5 py-0 text-terra-azure border-terra-border" : "text-[10px] px-1.5 py-0"}
           >
             {selectedEvent.status === "open" ? "Active" : "Closed"}
           </Badge>
         </div>
 
-        <div className="space-y-1 text-xs text-terra-text-muted">
+        <div className="space-y-1">
           {lastGeometry && (
-            <p>
+            <p className="text-[13px] text-terra-text-secondary">
               {lastGeometry.coordinates[1]!.toFixed(2)}, {lastGeometry.coordinates[0]!.toFixed(2)}
             </p>
           )}
-          {magnitudeText && <p>{magnitudeText}</p>}
-          {lastGeometry && <p>{formatDate(lastGeometry.timestamp)}</p>}
-          <p className="text-[10px]">Source: {selectedEvent.sourceAgency}</p>
+          {magnitudeText && <p className="text-[13px] text-terra-text-secondary">{magnitudeText}</p>}
+          {lastGeometry && <p className="text-[13px] text-terra-text-secondary">{formatDate(lastGeometry.timestamp)}</p>}
+          <p className="text-[11px] text-terra-text-muted">Source: {selectedEvent.sourceAgency}</p>
         </div>
 
         {selectedEvent.sourceUrl && (
@@ -231,7 +240,7 @@ export function EventPopup(): React.ReactElement | null {
             href={selectedEvent.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 block text-[10px] text-terra-cyan hover:underline"
+            className="mt-2 block text-[13px] text-terra-azure hover:underline"
           >
             View source
           </a>
@@ -239,7 +248,7 @@ export function EventPopup(): React.ReactElement | null {
 
         {activeImageryUrl ? (
           <button
-            className="mt-1 flex items-center gap-1 text-[10px] text-terra-cyan hover:underline"
+            className="mt-1 flex items-center gap-1 text-[13px] text-terra-azure hover:underline"
             onClick={clearImagery}
           >
             <X className="h-2.5 w-2.5" />
@@ -247,7 +256,7 @@ export function EventPopup(): React.ReactElement | null {
           </button>
         ) : (
           <button
-            className="mt-1 flex items-center gap-1 text-[10px] text-terra-cyan hover:underline"
+            className="mt-1 flex items-center gap-1 text-[13px] text-terra-azure hover:underline"
             onClick={() => {
               if (!lastGeometry) return;
               const [longitude, latitude] = lastGeometry.coordinates;
