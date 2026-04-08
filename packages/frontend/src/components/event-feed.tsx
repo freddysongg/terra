@@ -115,12 +115,10 @@ export function EventFeed(): React.ReactElement {
   const searchQuery = useEventStore((s) => s.searchQuery);
   const selectedEventId = useEventStore((s) => s.selectedEventId);
   const selectEvent = useEventStore((s) => s.selectEvent);
-  const setSelectedScreenPosition = useEventStore((s) => s.setSelectedScreenPosition);
   const activeLayers = useLayerStore((s) => s.activeLayers);
 
   const handleFeedSelect = useCallback((eventId: string): void => {
     selectEvent(eventId);
-    setSelectedScreenPosition({ x: window.innerWidth / 2, y: window.innerHeight / 3 });
 
     const targetEvent = events.find((e) => e.id === eventId);
     if (targetEvent) {
@@ -130,7 +128,7 @@ export function EventFeed(): React.ReactElement {
         useGlobeStore.getState().setFlyToTarget({ lat: latitude, lng: longitude });
       }
     }
-  }, [selectEvent, setSelectedScreenPosition, events]);
+  }, [selectEvent, events]);
 
   const filteredEvents = useMemo(() => {
     let result = events.filter((e) => activeLayers.has(e.category));

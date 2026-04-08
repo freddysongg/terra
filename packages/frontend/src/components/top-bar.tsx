@@ -50,7 +50,6 @@ export function TopBar(): React.ReactElement {
   const searchQuery = useEventStore((s) => s.searchQuery);
   const setSearchQuery = useEventStore((s) => s.setSearchQuery);
   const selectEvent = useEventStore((s) => s.selectEvent);
-  const setSelectedScreenPosition = useEventStore((s) => s.setSelectedScreenPosition);
   const isPerformanceMode = useGlobeStore((s) => s.isPerformanceMode);
   const togglePerformanceMode = useGlobeStore((s) => s.togglePerformanceMode);
   const spaceWeather = useDataStore((s) => s.spaceWeather);
@@ -85,10 +84,6 @@ export function TopBar(): React.ReactElement {
   const handleDropdownSelect = useCallback((eventId: string): void => {
     const selectedEvent = useEventStore.getState().events.find((e) => e.id === eventId);
     selectEvent(eventId);
-    setSelectedScreenPosition({
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 3,
-    });
     setSearchQuery("");
 
     if (selectedEvent) {
@@ -98,7 +93,7 @@ export function TopBar(): React.ReactElement {
         useGlobeStore.getState().setFlyToTarget({ lat: latitude, lng: longitude });
       }
     }
-  }, [selectEvent, setSelectedScreenPosition, setSearchQuery]);
+  }, [selectEvent, setSearchQuery]);
 
   const handleRegionSelect = useCallback((region: Region): void => {
     useGlobeStore.getState().setFlyToTarget({ lat: region.lat, lng: region.lng });

@@ -537,7 +537,27 @@ export class MarkerManager {
       entry.element.style.pointerEvents = (isBackFacing || isClustered) ? "none" : "auto";
     }
 
+    this.updateSelectedScreenPosition();
     this.css2dRenderer.render(this.scene, this.camera);
+  }
+
+  private updateSelectedScreenPosition(): void {
+    const store = useEventStore.getState();
+    const selectedId = store.selectedEventId;
+    if (!selectedId) return;
+
+    const entry = this.markers.get(selectedId);
+    if (!entry || !entry.object.visible) return;
+
+    const worldPos = new THREE.Vector3();
+    this.globe.localToWorld(worldPos.copy(entry.position));
+
+    const parent = this.canvas.parentElement;
+    const width = parent?.clientWidth ?? this.canvas.clientWidth;
+    const height = parent?.clientHeight ?? this.canvas.clientHeight;
+
+    const screenPos = projectToScreen(worldPos, this.camera, width, height);
+    store.setSelectedScreenPosition(screenPos);
   }
 
   resize(width: number, height: number): void {
