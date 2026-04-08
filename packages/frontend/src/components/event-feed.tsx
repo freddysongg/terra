@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ChevronLeft, Activity, Clock } from "lucide-react";
 import { useEventStore } from "../stores/event-store.js";
 import { useGlobeStore } from "../stores/globe-store.js";
@@ -7,6 +7,7 @@ import { CATEGORY_META } from "@terra/shared";
 import type { NaturalEvent, EventCategoryId } from "@terra/shared";
 import { Button } from "./ui/button.js";
 import { ScrollArea } from "./ui/scroll-area.js";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip.js";
 import { Badge } from "./ui/badge.js";
 import { cn } from "@/lib/utils.js";
 import { CategoryIcon } from "./category-icon.js";
@@ -79,9 +80,16 @@ function EventListItem({ event, isSelected, onSelect }: EventListItemProps): Rea
           style={{ color: categoryMeta.color }}
         />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-terra-text truncate">
-            {event.title}
-          </p>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="text-xs font-medium text-terra-text truncate">
+                {event.title}
+              </p>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start" className="max-w-[300px]">
+              {event.title}
+            </TooltipContent>
+          </Tooltip>
           <div className="flex items-center gap-2 mt-0.5">
             <span
               className="text-[10px]"
@@ -111,6 +119,10 @@ function EventListItem({ event, isSelected, onSelect }: EventListItemProps): Rea
 
 export function EventFeed(): React.ReactElement {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const sidebarWidthRef = useRef(280);
+  sidebarWidthRef.current = sidebarWidth;
+  const isResizing = useRef(false);
   const events = useEventStore((s) => s.events);
   const searchQuery = useEventStore((s) => s.searchQuery);
   const selectedEventId = useEventStore((s) => s.selectedEventId);
@@ -129,6 +141,28 @@ export function EventFeed(): React.ReactElement {
       }
     }
   }, [selectEvent, events]);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent): void => {
+    e.preventDefault();
+    isResizing.current = true;
+    const startX = e.clientX;
+    const startWidth = sidebarWidthRef.current;
+
+    function onMouseMove(moveEvent: MouseEvent): void {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.min(Math.max(startWidth + deltaX, 220), 500);
+      setSidebarWidth(newWidth);
+    }
+
+    function onMouseUp(): void {
+      isResizing.current = false;
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    }
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, []);
 
   const filteredEvents = useMemo(() => {
     let result = events.filter((e) => activeLayers.has(e.category));
@@ -159,8 +193,9 @@ export function EventFeed(): React.ReactElement {
     <div
       className={cn(
         "fixed left-4 top-16 z-20 transition-all duration-300",
-        isExpanded ? "w-[280px]" : "w-10",
+        isExpanded ? "" : "w-10",
       )}
+      style={isExpanded ? { width: `${sidebarWidth}px` } : undefined}
     >
       {!isExpanded && (
         <Button
@@ -231,6 +266,10 @@ export function EventFeed(): React.ReactElement {
               ))}
             </div>
           </ScrollArea>
+          <div
+            onMouseDown={handleResizeStart}
+            className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-terra-azure/30 transition-colors"
+          />
         </div>
       )}
     </div>

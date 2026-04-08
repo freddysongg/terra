@@ -4,9 +4,11 @@ import { useDataStore } from "../stores/data-store.js";
 import type { ApiResponse, NwsAlert } from "@terra/shared";
 
 const POLL_INTERVAL_MS = 3 * 60 * 1000;
+const RETRY_INTERVAL_MS = 60 * 1000;
 const MAX_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 1000;
 const LAYER_ID = "weatherAlerts" as const;
+const DISABLED_REASON = "NWS weather alerts unavailable";
 
 async function fetchAlerts(signal: AbortSignal): Promise<readonly NwsAlert[]> {
   const response = await fetch("/api/alerts", { signal });
@@ -46,6 +48,15 @@ export function useNwsPolling(): void {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    const retryTimerRef: { current: ReturnType<typeof setInterval> | null } = { current: null };
+
+    function clearRetryTimer(): void {
+      if (retryTimerRef.current !== null) {
+        clearInterval(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    }
+
     function stopPolling(): void {
       if (abortControllerRef.current !== null) {
         abortControllerRef.current.abort();
@@ -56,6 +67,25 @@ export function useNwsPolling(): void {
         intervalRef.current = null;
       }
       useDataStore.getState().setWeatherAlerts([]);
+    }
+
+    function startRetryLoop(): void {
+      clearRetryTimer();
+      const retryAbort = new AbortController();
+      abortControllerRef.current = retryAbort;
+
+      retryTimerRef.current = setInterval(async () => {
+        try {
+          const alerts = await fetchWithRetry(retryAbort.signal);
+          if (!retryAbort.signal.aborted) {
+            useDataStore.getState().setWeatherAlerts(alerts);
+            clearRetryTimer();
+            useLayerStore.getState().enableLayer(LAYER_ID);
+          }
+        } catch {
+          /* retry on next interval */
+        }
+      }, RETRY_INTERVAL_MS);
     }
 
     function startPolling(): void {
@@ -75,7 +105,8 @@ export function useNwsPolling(): void {
           if (!abortController.signal.aborted) {
             console.error("nws polling failed:", err);
             useDataStore.getState().setLoadingWeatherAlerts(false);
-            useLayerStore.getState().toggleLayer(LAYER_ID);
+            useLayerStore.getState().disableLayer(LAYER_ID, DISABLED_REASON);
+            startRetryLoop();
           }
         }
       }
@@ -93,6 +124,7 @@ export function useNwsPolling(): void {
       const isNowActive = state.activeLayers.has(LAYER_ID);
 
       if (!wasActive && isNowActive) {
+        clearRetryTimer();
         startPolling();
       } else if (wasActive && !isNowActive) {
         stopPolling();
@@ -101,6 +133,7 @@ export function useNwsPolling(): void {
 
     return () => {
       unsubscribe();
+      clearRetryTimer();
       if (abortControllerRef.current !== null) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;

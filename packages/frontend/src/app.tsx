@@ -9,6 +9,7 @@ import { SpaceWeatherCard } from "./components/space-weather-card.js";
 import { EventFeed } from "./components/event-feed.js";
 import { EventPopup } from "./components/event-popup.js";
 import { BottomBar } from "./components/bottom-bar.js";
+import { TooltipProvider } from "./components/ui/tooltip.js";
 import { useEventStore } from "./stores/event-store.js";
 import { useGlobeStore } from "./stores/globe-store.js";
 
@@ -33,32 +34,34 @@ export function App(): React.ReactElement {
   }, [handleKeyDown]);
 
   return (
-    <DataProvider>
-      <div className="relative w-full h-full">
-        <GlobeCanvas />
-        <Vignette />
-        <LoadingScreen />
-        {isLoaded && (
-          <>
-            <div className="animate-[fade-slide-down_0.4s_ease-out_both]">
-              <TopBar />
-            </div>
-            <div className="animate-[fade-slide-right_0.4s_ease-out_0.1s_both]">
-              <EventFeed />
-            </div>
-            <div className="animate-[fade-slide-left_0.4s_ease-out_0.2s_both]">
-              <LayerPanel />
-            </div>
-            <div className="animate-[fade-slide-left_0.4s_ease-out_0.4s_both]">
-              <SpaceWeatherCard />
-            </div>
-            <EventPopup />
-            <div className="animate-[fade-slide-up_0.4s_ease-out_0.3s_both]">
-              <BottomBar />
-            </div>
-          </>
-        )}
-      </div>
-    </DataProvider>
+    <TooltipProvider delayDuration={300}>
+      <DataProvider>
+        <div className="relative w-full h-full">
+          <GlobeCanvas />
+          <Vignette />
+          <LoadingScreen />
+          {isLoaded && (
+            <>
+              <div className="animate-[fade-slide-down_0.4s_ease-out_both]">
+                <TopBar />
+              </div>
+              <div className="animate-[fade-slide-right_0.4s_ease-out_0.1s_both]">
+                <EventFeed />
+              </div>
+              <div className="animate-[fade-slide-left_0.4s_ease-out_0.2s_both]">
+                <LayerPanel />
+              </div>
+              <div className="animate-[fade-slide-left_0.4s_ease-out_0.4s_both]">
+                <SpaceWeatherCard />
+              </div>
+              <EventPopup />
+              <div className="animate-[fade-slide-up_0.4s_ease-out_0.3s_both]">
+                <BottomBar />
+              </div>
+            </>
+          )}
+        </div>
+      </DataProvider>
+    </TooltipProvider>
   );
 }

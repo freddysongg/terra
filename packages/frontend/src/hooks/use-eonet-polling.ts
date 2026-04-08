@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useEventStore } from "../stores/event-store.js";
+import { useLayerStore } from "../stores/layer-store.js";
+import { EVENT_CATEGORY_IDS } from "@terra/shared";
 import type { ApiResponse, NaturalEvent } from "@terra/shared";
 
 const POLL_INTERVAL_MS = 10 * 60 * 1000;
@@ -52,10 +54,12 @@ export function useEonetPolling(): void {
           const store = useEventStore.getState();
           store.setEvents(events);
           store.setLastFetchedAt(Date.now());
+          useLayerStore.getState().enableLayers(EVENT_CATEGORY_IDS);
         }
       } catch (err) {
         if (!abortController.signal.aborted) {
           console.error("eonet polling failed:", err);
+          useLayerStore.getState().disableLayers(EVENT_CATEGORY_IDS, "EONET service unavailable");
         }
       }
     }

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useDataStore } from "../stores/data-store.js";
+import { useLayerStore } from "../stores/layer-store.js";
 import type { ApiResponse, SpaceWeatherSummary } from "@terra/shared";
 
 const POLL_INTERVAL_MS = 20 * 60 * 1000;
@@ -53,11 +54,13 @@ export function useDonkiPolling(): void {
           const store = useDataStore.getState();
           store.setSpaceWeather(summary);
           store.setLoadingSpaceWeather(false);
+          useLayerStore.getState().enableLayer("spaceWeather");
         }
       } catch (err) {
         if (!abortController.signal.aborted) {
           console.error("donki polling failed:", err);
           useDataStore.getState().setLoadingSpaceWeather(false);
+          useLayerStore.getState().disableLayer("spaceWeather", "Space weather service unavailable");
         }
       }
     }
