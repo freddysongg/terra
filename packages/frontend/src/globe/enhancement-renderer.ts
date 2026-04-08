@@ -45,9 +45,9 @@ function latLngToVector3(latitude: number, longitude: number): THREE.Vector3 {
   const latRad = (latitude * Math.PI) / 180;
   const lngRad = (longitude * Math.PI) / 180;
   return new THREE.Vector3(
-    -Math.cos(latRad) * Math.cos(lngRad) * MARKER_RADIUS,
+    Math.cos(latRad) * Math.cos(lngRad) * MARKER_RADIUS,
     Math.sin(latRad) * MARKER_RADIUS,
-    Math.cos(latRad) * Math.sin(lngRad) * MARKER_RADIUS,
+    -Math.cos(latRad) * Math.sin(lngRad) * MARKER_RADIUS,
   );
 }
 

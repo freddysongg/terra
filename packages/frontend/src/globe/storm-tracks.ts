@@ -22,9 +22,9 @@ function latLngToVector3(latitude: number, longitude: number): THREE.Vector3 {
   const latRad = (latitude * Math.PI) / 180;
   const lngRad = (longitude * Math.PI) / 180;
   return new THREE.Vector3(
-    -Math.cos(latRad) * Math.cos(lngRad) * TRACK_RADIUS,
+    Math.cos(latRad) * Math.cos(lngRad) * TRACK_RADIUS,
     Math.sin(latRad) * TRACK_RADIUS,
-    Math.cos(latRad) * Math.sin(lngRad) * TRACK_RADIUS,
+    -Math.cos(latRad) * Math.sin(lngRad) * TRACK_RADIUS,
   );
 }
 
@@ -138,7 +138,7 @@ export class StormTrackRenderer {
   update(): void {
     for (const [, entry] of this.tracks) {
       if (!entry.line.visible) continue;
-      entry.material.dashOffset -= DASH_ANIMATION_SPEED;
+      (entry.material as unknown as { dashOffset: number }).dashOffset -= DASH_ANIMATION_SPEED;
     }
   }
 

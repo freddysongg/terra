@@ -99,16 +99,18 @@ export class GlobeScene {
     canvas.addEventListener("mousemove", this.handleMouseMove);
     canvas.addEventListener("mouseleave", this.handleMouseLeave);
 
-    this.unsubFlyTo = useGlobeStore.subscribe((state) => state.flyToTarget, (target) => {
+    this.unsubFlyTo = useGlobeStore.subscribe((state, prev) => {
+      if (state.flyToTarget === prev.flyToTarget) return;
+      const target = state.flyToTarget;
       if (!target) return;
       this.startFlyTo(target.lat, target.lng);
       useGlobeStore.getState().setFlyToTarget(null);
     });
 
-    this.unsubPerformanceMode = useGlobeStore.subscribe(
-      (state) => state.isPerformanceMode,
-      (isOn) => this.applyPerformanceMode(isOn),
-    );
+    this.unsubPerformanceMode = useGlobeStore.subscribe((state, prev) => {
+      if (state.isPerformanceMode === prev.isPerformanceMode) return;
+      this.applyPerformanceMode(state.isPerformanceMode);
+    });
 
     this.init().catch((err) => {
       console.error("globe scene initialization failed:", err);
@@ -211,9 +213,9 @@ export class GlobeScene {
     const latRad = (lat * Math.PI) / 180;
     const lngRad = (lng * Math.PI) / 180;
     return new THREE.Vector3(
-      -Math.cos(latRad) * Math.cos(lngRad),
+      Math.cos(latRad) * Math.cos(lngRad),
       Math.sin(latRad),
-      Math.cos(latRad) * Math.sin(lngRad),
+      -Math.cos(latRad) * Math.sin(lngRad),
     ).multiplyScalar(0.01);
   }
 
