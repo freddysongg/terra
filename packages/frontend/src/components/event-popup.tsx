@@ -7,6 +7,7 @@ import { Button } from "./ui/button.js";
 import { Badge } from "./ui/badge.js";
 import { CategoryIcon } from "./category-icon.js";
 import { useGibsImagery } from "../hooks/use-gibs-imagery.js";
+import { useGlobeStore } from "../stores/globe-store.js";
 
 const DEFAULT_GIBS_LAYER = "MODIS_Terra_CorrectedReflectance_TrueColor";
 
@@ -277,6 +278,7 @@ export function EventPopup(): React.ReactElement | null {
               const { x, y } = latLngToTileCoords(latitude, longitude, GIBS_ZOOM);
 
               useDataStore.getState().setImageryEventCoordinates({ lat: latitude, lng: longitude });
+              useGlobeStore.getState().setFlyToTarget({ lat: latitude, lng: longitude });
               fetchImagery(layer, date, GIBS_ZOOM, y, x);
             }}
           >
